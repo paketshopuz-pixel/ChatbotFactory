@@ -7,6 +7,7 @@ from ..models import Bot, KnowledgeBase, Product
 from ..forms import KnowledgeBaseForm, ProductForm
 import openpyxl
 import os
+import logging
 from werkzeug.utils import secure_filename
 import docx
 
@@ -141,30 +142,32 @@ def upload_text_file(bot_id):
         filename = secure_filename(file.filename)
         content = ""
         try:
+            # Fayl kengaytmasini tekshirish
             if filename.endswith('.txt'):
-                content = file.read().decode('utf-8')
+                # UTF-8 da o'qishga harakat qilish
+                content = file.read().decode('utf-8', errors='ignore')
             elif filename.endswith('.docx'):
                 doc = docx.Document(file)
-                full_text = []
-                for para in doc.paragraphs:
-                    full_text.append(para.text)
+                full_text = [para.text for para in doc.paragraphs]
                 content = '\n'.join(full_text)
             else:
                 flash(_('Invalid file type. Please upload a .txt or .docx file.'), 'danger')
                 return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
 
-            if content:
-                # Fayl nomidan .txt yoki .docx qismini olib tashlash
+            # Agar kontent mavjud bo'lsa, bazaga saqlash
+            if content.strip():
                 title = os.path.splitext(filename)[0]
                 entry = KnowledgeBase(title=title, content=content, bot=bot)
                 db.session.add(entry)
                 db.session.commit()
-                flash(_('File "%(name)s" has been successfully processed and added to the knowledge base.', name=filename), 'success')
+                flash(_('File "%(name)s" has been successfully processed and added.', name=filename), 'success')
             else:
                 flash(_('Could not extract any text from the file "%(name)s".', name=filename), 'warning')
 
         except Exception as e:
+            # Foydalanuvchiga tushunarli xabar berish
+            logging.error(f"File upload error for user {current_user.id}: {e}") # Logga to'liq xatoni yozish
             db.session.rollback()
-            flash(_('An error occurred while processing the file. Error: %(error)s', error=str(e)), 'danger')
+            flash(_('An unexpected error occurred while processing the file. Please ensure it is a valid and properly encoded text file.'), 'danger')
         
     return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))

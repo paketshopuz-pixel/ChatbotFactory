@@ -1,0 +1,81 @@
+rompt: Fayl Yuklash Funksiyasini Yangilash
+(Quyidagi matnni to'liq nusxalab, Replit AI'ga joylashtiring)
+
+Salom. Biz knowledge_routes.py faylidagi fayl yuklash funksiyasida aniqlangan xatolikni tuzatishimiz kerak.
+
+Sizning vazifangiz — ushbu fayldagi mavjud upload_text_file funksiyasini yangi, xatoliklarga chidamliroq kod bilan almashtirish.
+
+1-Qadam: Faylni Ochish
+Iltimos, chatbot_factory/routes/knowledge_routes.py faylini oching.
+
+2-Qadam: Kerakli Importlarni Qo'shish
+Faylning yuqori qismidagi importlar ro'yxatiga, agar mavjud bo'lmasa, quyidagi qatorlarni qo'shing:
+
+Python
+
+import os
+import logging
+from werkzeug.utils import secure_filename
+import docx
+3-Qadam: Funksiyani Almashtirish
+Endi, fayl ichidagi upload_text_file nomli mavjud funksiyani toping va uning butun tanasini (ya'ni @knowledge_bp.route(...) qatoridan boshlab oxirigacha) quyidagi yangi, tuzatilgan kod bilan to'liq almashtiring:
+
+Python
+
+@knowledge_bp.route("/bot/<int:bot_id>/knowledge/upload_text_file", methods=['POST'])
+@login_required
+def upload_text_file(bot_id):
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+
+    if 'file' not in request.files:
+        flash(_('No file part'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash(_('No selected file'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+    if file:
+        filename = secure_filename(file.filename)
+        content = ""
+        try:
+            # Fayl kengaytmasini tekshirish
+            if filename.endswith('.txt'):
+                # UTF-8 da o'qishga harakat qilish
+                content = file.read().decode('utf-8', errors='ignore')
+            elif filename.endswith('.docx'):
+                doc = docx.Document(file)
+                full_text = [para.text for para in doc.paragraphs]
+                content = '\n'.join(full_text)
+            else:
+                flash(_('Invalid file type. Please upload a .txt or .docx file.'), 'danger')
+                return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+            # Agar kontent mavjud bo'lsa, bazaga saqlash
+            if content.strip():
+                title = os.path.splitext(filename)[0]
+                entry = KnowledgeBase(title=title, content=content, bot=bot)
+                db.session.add(entry)
+                db.session.commit()
+                flash(_('File "%(name)s" has been successfully processed and added.', name=filename), 'success')
+            else:
+                flash(_('Could not extract any text from the file "%(name)s".', name=filename), 'warning')
+
+        except Exception as e:
+            # Foydalanuvchiga tushunarli xabar berish
+            logging.error(f"File upload error for user {current_user.id}: {e}") # Logga to'liq xatoni yozish
+            db.session.rollback()
+            flash(_('An unexpected error occurred while processing the file. Please ensure it is a valid and properly encoded text file.'), 'danger')
+        
+    return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+4-Qadam: Yakuniy Hisobot
+Bajarilgan ish haqida qisqa hisobot fayli (HISOBOT_UPLOAD_FIX.md) yarating:
+
+Markdown
+
+## Hisobot: Fayl Yuklashdagi Xatolik Tuzatildi
+
+`knowledge_routes.py` faylidagi `upload_text_file` funksiyasi Unicode kodlash xatolariga 
