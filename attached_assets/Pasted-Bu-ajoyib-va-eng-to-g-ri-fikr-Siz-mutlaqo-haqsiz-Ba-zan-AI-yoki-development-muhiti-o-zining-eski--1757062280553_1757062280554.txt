@@ -1,0 +1,260 @@
+Bu ajoyib va eng to'g'ri fikr!
+
+Siz mutlaqo haqsiz. Ba'zan AI yoki development muhiti o'zining eski holatini "eslab qolishi" va bu yangi o'zgarishlarni to'g'ri qabul qilishiga xalaqit berishi mumkin.
+
+Yangi, toza akkaunt (yoki shunchaki yangi "Repl") bilan boshlash bizni eski loyihadagi ko'rinmas xatolar, kesh muammolari yoki AI'ning eski "xotirasi" bilan bog'liq har qanday noaniqliklardan xalos qiladi. Bu loyihani muvaffaqiyatli boshlashning eng ishonchli usuli.
+
+Keling, shunday qilamiz.
+
+Men sizga noldan, pishiq-puxta arxitektura asosida loyiha qurish uchun avval tayyorlagan "oltin" promptimizni qaytadan taqdim etaman.
+
+Yangi Boshlash Uchun To'liq Prompt
+Iltimos, yangi Replit muhitini yarating va unga quyidagi to'liq promptni o'zgartirishsiz yuboring.
+
+(Quyidagi matnni to'liq nusxalab, yangi Repl'dagi AI'ga joylashtiring)
+
+Salom. Siz yuqori malakali, tajribali Full-Stack Python/Flask dasturchisisiz.
+
+Sizning vazifangiz — "ChatBot Factory" nomli SaaS platformasining poydevorini noldan, pishiq-puxta va kengaytiriladigan arxitektura asosida qurish. Bu topshiriqni boshidan to'g'ri, eng yaxshi amaliyotlarga rioya qilgan holda, fundamental xatolarsiz bajarishingiz qat'iy talab etiladi.
+
+1-VAZIFA: Loyihaning To'g'ri Fayl Tuzilishini Yaratish
+
+Quyidagi fayl va papka tuzilishini aniq va xatosiz yarating. Bu loyihaning asosiy poydevoridir.
+
+/ (Ildiz papka)
+├── run.py                      # Ilovani ishga tushiruvchi fayl
+├── pyproject.toml              # Bog'liqliklar
+├── .replit                     # Replit konfiguratsiyasi
+├── babel.cfg                   # Babel konfiguratsiyasi
+└── chatbot_factory/            # Asosiy ilova paketi
+    ├── __init__.py             # Ilova factory'si (sobiq app.py)
+    ├── models.py               # Ma'lumotlar bazasi modellari
+    ├── forms.py                # WTForms formalari
+    ├── routes/                 # Marshrutlar (blueprints) uchun papka
+    │   ├── __init__.py
+    │   ├── main_routes.py
+    │   └── auth_routes.py
+    ├── services/               # Biznes mantig'i uchun papka
+    │   ├── __init__.py
+    │   └── ai_service.py       # (Placeholder)
+    ├── utils/                  # Yordamchi funksiyalar uchun papka
+    │   ├── __init__.py
+    │   └── decorators.py       # (Placeholder)
+    ├── static/
+    │   └── css/
+    │       └── style.css
+    └── templates/
+        ├── base.html
+        ├── index.html
+        └── login.html
+2-VAZIFA: Bog'liqliklarni Sozlash (pyproject.toml)
+
+pyproject.toml faylini yarating va unga quyidagi tarkibni joylashtiring:
+
+Ini, TOML
+
+[tool.poetry]
+name = "chatbot-factory"
+version = "0.1.0"
+description = "AI ChatBot SaaS Platform"
+authors = ["AI Developer"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Flask = "*"
+Flask-SQLAlchemy = "*"
+Flask-Migrate = "*"
+Flask-Login = "*"
+Flask-Babel = "*"
+Flask-WTF = "*"
+gunicorn = "*"
+python-dotenv = "*"
+google-generativeai = "*"
+psycopg2-binary = "*"
+werkzeug = "*"
+3-VAZIFA: Ilova Factory'sini Yaratish (chatbot_factory/__init__.py)
+
+chatbot_factory/__init__.py faylini yarating. Bu fayl loyihaning yuragi bo'ladi. Unga quyidagi kodni o'zgartirishsiz joylashtiring:
+
+Python
+
+# chatbot_factory/__init__.py
+import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_login import LoginManager
+from flask_babel import Babel, gettext
+from dotenv import load_dotenv
+
+load_dotenv()
+
+db = SQLAlchemy()
+migrate = Migrate()
+babel = Babel()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+login_manager.login_message_category = 'info'
+
+def create_app():
+    app = Flask(__name__)
+
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get("SESSION_SECRET", "default-dev-secret-key"),
+        SQLALCHEMY_DATABASE_URI=os.environ.get("DATABASE_URL", "sqlite:///app.db"),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        LANGUAGES={'en': 'English', 'ru': 'Русский', 'uz': "O'zbek"},
+    )
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    babel.init_app(app)
+    login_manager.init_app(app)
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        from .models import User
+        return User.query.get(int(user_id))
+
+    @babel.localeselector
+    def get_locale():
+        # TODO: Add language selection logic later
+        return 'en'
+    
+    @app.context_processor
+    def inject_gettext():
+        return dict(_=gettext)
+
+    from .routes.main_routes import main_bp
+    from .routes.auth_routes import auth_bp
+    app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
+
+    return app
+4-VAZIFA: Ma'lumotlar Bazasi Modellarini Yaratish (chatbot_factory/models.py)
+
+chatbot_factory/models.py faylini yarating va unga quyidagi asosiy modelni joylashtiring:
+
+Python
+
+# chatbot_factory/models.py
+from . import db
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+5-VAZIFA: Marshrutlarni (Routes) Yaratish
+
+chatbot_factory/routes/main_routes.py faylini yarating:
+
+Python
+
+from flask import Blueprint, render_template
+main_bp = Blueprint('main', __name__)
+@main_bp.route('/')
+def index():
+    return render_template('index.html')
+chatbot_factory/routes/auth_routes.py faylini yarating:
+
+Python
+
+from flask import Blueprint
+auth_bp = Blueprint('auth', __name__)
+# TODO: Login and Register routes will be added here
+6-VAZIFA: Ilovani Ishga Tushirish Fayllarini Sozlash
+
+Ildiz papkadagi run.py faylini yarating:
+
+Python
+
+from chatbot_factory import create_app
+app = create_app()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+Ildiz papkadagi .replit faylini yarating:
+
+Ini, TOML
+
+language = "python3"
+entrypoint = "run.py"
+
+[run]
+command = ["gunicorn", "--bind=0.0.0.0:8080", "chatbot_factory:create_app()"]
+Ildiz papkadagi babel.cfg faylini yarating:
+
+Ini, TOML
+
+[python: **.py]
+[jinja2: chatbot_factory/templates/**.html]
+extensions=jinja2.ext.autoescape,jinja2.ext.with_
+7-VAZIFA: Frontend Shablonlarini Yaratish
+
+chatbot_factory/templates/base.html faylini yarating:
+
+HTML
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ _('ChatBot Factory') }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
+chatbot_factory/templates/index.html faylini yarating:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mt-5">{{ _('Welcome to ChatBot Factory!') }}</h1>
+    <p>{{ _('The foundation is ready.') }}</p>
+{% endblock %}
+8-VAZIFA: Yakuniy Hisobotni Yaratish
+
+Barcha topshiriqlarni bajarib bo'lgach, loyiha ildiz papkasida YANGI_LOYIHA_HISOBOTI.md nomli fayl yarating va uni quyidagi ma'lumotlar bilan to'ldiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasining Yangi Poydevori Bo'yicha Hisobot
+
+## 1. Xulosa
+Loyiha poydevori noldan, pishiq-puxta va kengaytiriladigan "package" arxitekturasi asosida muvaffaqiyatli qurildi. Barcha fundamental sozlamalar va fayllar joyida. Tizim keyingi bosqichlarga to'liq tayyor.
+
+## 2. Bajarilgan Ishlar
+- [ ] Loyiha uchun to'g'ri "package" strukturasi (`chatbot_factory/`) yaratildi.
+- [ ] `pyproject.toml` fayli orqali barcha bog'liqliklar sozlandi.
+- [ ] `chatbot_factory/__init__.py`'da Application Factory na'munasi to'liq implementatsiya qilindi.
+- [ ] Asosiy `User` modeli `models.py`'da yaratildi.
+- [ ] Asosiy `main` va bo'sh `auth` blueprint'lari yaratildi.
+- [ ] `run.py` va `.replit` fayllari yangi strukturaga moslab sozlandi.
+- [ ] Asosiy frontend shablonlari yaratildi.
+
+## 3. Loyihani Tekshirish va Ishga Tushirish Yo'riqnomasi
+Ushbu poydevorni tekshirish va ishga tushirish uchun quyidagi qadamlar bajarilishi SHART:
+1.  **Secrets:** Replit'ning "Secrets" bo'limiga `SESSION_SECRET` va `DATABASE_URL` o'zgaruvchilarini kiriting.
+2.  **Shell'ni oching va muhitni sozlang:**
+    `export FLASK_APP=chatbot_factory`
+3.  **Ma'lumotlar Bazasini Yarating (Migratsiya):**
+    `flask db init` (faqat birinchi marta)
+    `flask db migrate -m "Initial migration with User model"`
+    `flask db upgrade`
+4.  **"Run" tugmasini bosing:** Ilova xatolarsiz ishga tushishi va WebView'da "Welcome to ChatBot Factory!" yozuvi chiqishi kerak.
+5.  **CLI Buyruqlarini Tekshiring:** `flask --help` buyrug'ini kiriting va javobda `db` va `babel` buyruqlari ko'rinayotganiga ishonch hosil qiling. Bu arxitektura to'g'ri ekanligining isbotidir.
