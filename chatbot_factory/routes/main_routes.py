@@ -1,5 +1,6 @@
 # chatbot_factory/routes/main_routes.py
 from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask_babel import gettext as _
 from flask_login import login_required, current_user
 from .. import db
 from ..models import Bot
@@ -34,3 +35,7 @@ def profile():
         return redirect(url_for('main.profile'))
     
     return render_template('profile.html')
+
+@main_bp.route('/subscriptions')
+def subscriptions():
+    return render_template('subscriptions.html', title=_('Subscriptions'))

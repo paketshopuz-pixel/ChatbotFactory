@@ -11,6 +11,13 @@ bots_bp = Blueprint('bots', __name__)
 @bots_bp.route("/bot/create", methods=['GET', 'POST'])
 @login_required
 def create_bot():
+    # --- YANGI TEKSHIRUV KODI ---
+    bot_count = Bot.query.filter_by(owner=current_user).count()
+    if bot_count >= current_user.subscription.max_bots:
+        flash(_('You have reached the maximum number of bots for your current plan. Please upgrade to create more.'), 'warning')
+        return redirect(url_for('auth.dashboard'))
+    # --- TEKSHIRUV KODI TUGADI ---
+
     form = BotForm()
     if form.validate_on_submit():
         bot = Bot(name=form.name.data, platform_type=form.platform_type.data,

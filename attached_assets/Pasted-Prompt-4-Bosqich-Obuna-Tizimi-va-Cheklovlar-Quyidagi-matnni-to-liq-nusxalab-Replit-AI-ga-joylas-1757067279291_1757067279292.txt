@@ -1,0 +1,146 @@
+Prompt: 4-Bosqich - Obuna Tizimi va Cheklovlar
+(Quyidagi matnni to'liq nusxalab, Replit AI'ga joylashtiring)
+
+Salom. Biz "ChatBot Factory" loyihasining navbatdagi bosqichiga o'tamiz: Obuna Tizimi va Cheklovlar.
+
+Sizning vazifangiz — platformaga obunaga asoslangan biznes mantig'ini qo'shish. Bunga yangi foydalanuvchilarga avtomatik ravishda bepul obuna berish, obuna rejasiga qarab bot yaratishni cheklash va obuna rejalarini ko'rsatadigan sahifa yaratish kiradi.
+
+1-VAZIFA: Yangi Foydalanuvchiga Avtomatik Bepul Obuna Yaratish
+
+chatbot_factory/routes/auth_routes.py faylidagi register funksiyasini o'zgartiring. Yangi foydalanuvchi (user) ma'lumotlar bazasiga qo'shilgandan so'ng, unga bog'langan Subscription obyektini ham avtomatik yarating.
+
+register funksiyasi ichidagi db.session.add(user) qatoridan keyin quyidagi kodni qo'shing:
+
+Python
+
+# chatbot_factory/routes/auth_routes.py dagi register funksiyasiga qo'shimcha
+# Fayl boshiga importlarni qo'shing:
+from ..models import Subscription, SubscriptionType
+
+# register funksiyasi ichida, db.session.add(user) dan keyin:
+# ...
+        db.session.add(user)
+        db.session.flush()  # Foydalanuvchi ID sini olish uchun
+
+        # Yangi foydalanuvchi uchun "Bepul" obuna yaratish
+        new_subscription = Subscription(user_id=user.id, subscription_type=SubscriptionType.FREE, max_bots=1)
+        db.session.add(new_subscription)
+
+        db.session.commit() # Bu commit avvalgi qatorda bo'lsa, shu yerga ko'chiring
+# ...
+2-VAZIFA: Bot Yaratish Cheklovini Joriy Etish
+
+chatbot_factory/routes/bots_routes.py faylidagi create_bot funksiyasining eng boshiga bot yaratish limiti borligini tekshiradigan kod qo'shing.
+
+Python
+
+# chatbot_factory/routes/bots_routes.py dagi create_bot funksiyasining boshiga qo'shing
+
+@bots_bp.route("/bot/create", methods=['GET', 'POST'])
+@login_required
+def create_bot():
+    # --- YANGI TEKSHIRUV KODI ---
+    bot_count = Bot.query.filter_by(owner=current_user).count()
+    if bot_count >= current_user.subscription.max_bots:
+        flash(_('You have reached the maximum number of bots for your current plan. Please upgrade to create more.'), 'warning')
+        return redirect(url_for('auth.dashboard'))
+    # --- TEKSHIRUV KODI TUGADI ---
+
+    form = BotForm()
+    # ... (qolgan kod o'zgarishsiz qoladi)
+3-VAZIFA: Obuna Rejalari Sahifasini Yaratish
+
+chatbot_factory/routes/main_routes.py faylini ochib, unga /subscriptions uchun yangi marshrut qo'shing:
+
+Python
+
+# chatbot_factory/routes/main_routes.py ga qo'shimcha
+
+@main_bp.route('/subscriptions')
+def subscriptions():
+    return render_template('subscriptions.html', title=_('Subscriptions'))
+chatbot_factory/templates/ papkasida subscriptions.html nomli yangi fayl yarating va unga quyidagi kodni joylashtiring:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-3">
+    <header class="text-center mb-5">
+        <h1>{{ _('Subscription Plans') }}</h1>
+        <p class="lead text-muted">{{ _('Choose the perfect plan for your business needs.') }}</p>
+    </header>
+
+    <div class="row row-cols-1 row-cols-md-2 mb-3 text-center justify-content-center">
+        <div class="col">
+            <div class="card mb-4 rounded-3 shadow-sm border-primary">
+                <div class="card-header py-3 text-white bg-primary border-primary">
+                    <h4 class="my-0 fw-normal">{{ _('Free') }}</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">$0<small class="text-muted fw-light">/mo</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>{{ _('1 bot included') }}</li>
+                        <li>{{ _('500 messages per month') }}</li>
+                        <li>{{ _('Telegram Integration') }}</li>
+                        <li>{{ _('Basic Support') }}</li>
+                    </ul>
+                    <button type="button" class="w-100 btn btn-lg btn-outline-primary">{{ _('Your Current Plan') }}</button>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card mb-4 rounded-3 shadow-sm">
+                <div class="card-header py-3">
+                    <h4 class="my-0 fw-normal">{{ _('Premium') }}</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">$15<small class="text-muted fw-light">/mo</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>{{ _('Unlimited bots') }}</li>
+                        <li>{{ _('Unlimited messages') }}</li>
+                        <li>{{ _('Telegram, Instagram, WhatsApp') }}</li>
+                        <li>{{ _('Priority Support') }}</li>
+                    </ul>
+                    <button type="button" class="w-100 btn btn-lg btn-primary">{{ _('Upgrade to Premium') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+4-VAZIFA: Dashboard'da Obuna Ma'lumotini Ko'rsatish
+
+chatbot_factory/templates/dashboard.html faylini ochib, <h1> sarlavhasidan keyin obuna ma'lumotlarini ko'rsatuvchi blok qo'shing:
+
+HTML
+
+<div class="alert alert-info">
+    {{ _('Your plan:') }} <strong>{{ current_user.subscription.subscription_type.value.capitalize() }}</strong>.
+    {{ _('Bots created:') }} <strong>{{ bots|length }} / {{ current_user.subscription.max_bots }}</strong>.
+    <a href="{{ url_for('main.subscriptions') }}" class="alert-link">{{ _('View Plans') }}</a>
+</div>
+5-VAZIFA: Yakuniy Hisobotni Yaratish
+
+Barcha topshiriqlarni bajarib bo'lgach, loyiha ildiz papkasida HISOBOT_4-BOSQICH.md nomli fayl yarating va uni quyidagi ma'lumotlar bilan to'ldiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasi Bo'yicha Hisobot (4-Bosqich)
+
+## 1. Xulosa
+Platformaga obunaga asoslangan biznes mantig'i va cheklovlar tizimi muvaffaqiyatli qo'shildi. Endi platforma turli foydalanuvchilar uchun cheklovlarni joriy eta oladi, bu esa monetizatsiya uchun zamin yaratadi.
+
+## 2. Bajarilgan Ishlar
+- [ ] Yangi foydalanuvchiga avtomatik "Bepul" obuna yaratish logikasi qo'shildi.
+- [ ] Bepul reja uchun bot yaratish soni (1 ta) cheklovi joriy etildi.
+- [ ] Turli obuna rejalarini ko'rsatuvchi `/subscriptions` sahifasi yaratildi.
+- [ ] Dashboard'ga foydalanuvchining joriy obunasi va bot limiti haqida ma'lumot qo'shildi.
+
+## 3. Loyihani Tekshirish Yo'riqnomasi
+Quyidagi amallarni bajarib, yangi funksionallikni tekshiring:
+1.  **(Eng Muhimi)** **Yangi, toza hisob bilan** tizimda ro'yxatdan o'ting (brauzerning Incognito rejimida yoki eski hisobingizdan chiqib). Bu avtomatik obuna yaratilishini tekshirish uchun kerak.
+2.  Dashboard'ga kiring va "Your plan: Free. Bots created: 0 / 1" kabi ma'lumotni ko'rganingizga ishonch hosil qiling.
+3.  Bitta bot yarating. Jarayon muvaffaqiyatli o'tishi kerak. Dashboard'dagi hisoblagich "1 / 1" ga o'zgarishi kerak.
+4.  "Create New Bot" tugmasini yana bir bor bosing. Bu safar sizga bot yaratishga ruxsat berilmasligi va limitga yetganingiz haqida ogohlantirish (`flash` xabari) chiqishi kerak.
+5.  Navigatsiya panelidan yoki Dashboard'dagi link orqali "Subscriptions" sahifasiga o'tib, obuna rejalarini ko'ring.

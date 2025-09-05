@@ -3,7 +3,7 @@ from flask import render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_babel import gettext as _
 from chatbot_factory import db
-from chatbot_factory.models import User, Bot
+from chatbot_factory.models import User, Bot, Subscription, SubscriptionType
 from chatbot_factory.forms import LoginForm, RegistrationForm
 
 auth_bp = Blueprint('auth', __name__)
@@ -21,7 +21,13 @@ def register():
         )
         user.set_password(form.password.data)
         db.session.add(user)
-        db.session.commit()
+        db.session.flush()  # Foydalanuvchi ID sini olish uchun
+
+        # Yangi foydalanuvchi uchun "Bepul" obuna yaratish
+        new_subscription = Subscription(user_id=user.id, subscription_type=SubscriptionType.FREE, max_bots=1)
+        db.session.add(new_subscription)
+
+        db.session.commit()  # Bu commit avvalgi qatorda bo'lsa, shu yerga ko'chiring
         flash(_('Your account has been created! You are now able to log in.'), 'success')
         return redirect(url_for('auth.login'))
     return render_template('register.html', title=_('Register'), form=form)
