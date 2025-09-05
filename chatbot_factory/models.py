@@ -24,9 +24,11 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_admin = db.Column(db.Boolean, default=False, nullable=False)
-    language = db.Column(db.String(5), default='en', nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     subscription = db.relationship('Subscription', backref='user', uselist=False, cascade='all, delete-orphan')
     bots = db.relationship('Bot', backref='owner', lazy=True, cascade='all, delete-orphan')
