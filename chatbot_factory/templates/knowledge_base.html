@@ -51,6 +51,19 @@
   </div>
   <div class="tab-pane fade" id="text" role="tabpanel">
     <div class="p-3 border border-top-0">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">{{ _('Upload a Text File') }}</h5>
+                <p class="card-text"><small>{{ _('Upload a .txt or .docx file to add its content to the knowledge base.') }}</small></p>
+                <form method="POST" action="{{ url_for('knowledge.upload_text_file', bot_id=bot.id) }}" enctype="multipart/form-data">
+                    <div class="input-group">
+                        <input type="file" class="form-control" name="file" accept=".txt,.docx" required>
+                        <button class="btn btn-success" type="submit">{{ _('Upload File') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <h5 class="mb-3">{{ _('Or Add Manually') }}</h5>
         <form method="POST" action="{{ url_for('knowledge.add_text_entry', bot_id=bot.id) }}">
             {{ text_form.hidden_tag() }}
             <div class="mb-3">{{ text_form.title.label(class="form-label") }} {{ text_form.title(class="form-control") }}</div>

@@ -6,6 +6,9 @@ from .. import db
 from ..models import Bot, KnowledgeBase, Product
 from ..forms import KnowledgeBaseForm, ProductForm
 import openpyxl
+import os
+from werkzeug.utils import secure_filename
+import docx
 
 knowledge_bp = Blueprint('knowledge', __name__)
 
@@ -115,5 +118,53 @@ def upload_products(bot_id):
             flash(_('An error occurred while processing the file. Please check the format. Error: %(error)s', error=str(e)), 'danger')
     else:
         flash(_('Invalid file type. Please upload a .xlsx file.'), 'danger')
+        
+    return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+@knowledge_bp.route("/bot/<int:bot_id>/knowledge/upload_text_file", methods=['POST'])
+@login_required
+def upload_text_file(bot_id):
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+
+    if 'file' not in request.files:
+        flash(_('No file part'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash(_('No selected file'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+    if file:
+        filename = secure_filename(file.filename)
+        content = ""
+        try:
+            if filename.endswith('.txt'):
+                content = file.read().decode('utf-8')
+            elif filename.endswith('.docx'):
+                doc = docx.Document(file)
+                full_text = []
+                for para in doc.paragraphs:
+                    full_text.append(para.text)
+                content = '\n'.join(full_text)
+            else:
+                flash(_('Invalid file type. Please upload a .txt or .docx file.'), 'danger')
+                return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+            if content:
+                # Fayl nomidan .txt yoki .docx qismini olib tashlash
+                title = os.path.splitext(filename)[0]
+                entry = KnowledgeBase(title=title, content=content, bot=bot)
+                db.session.add(entry)
+                db.session.commit()
+                flash(_('File "%(name)s" has been successfully processed and added to the knowledge base.', name=filename), 'success')
+            else:
+                flash(_('Could not extract any text from the file "%(name)s".', name=filename), 'warning')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(_('An error occurred while processing the file. Error: %(error)s', error=str(e)), 'danger')
         
     return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
