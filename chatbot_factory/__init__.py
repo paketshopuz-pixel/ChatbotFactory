@@ -55,9 +55,11 @@ def create_app():
     from .routes.main_routes import main_bp
     from .routes.auth_routes import auth_bp
     from .routes.bots_routes import bots_bp
+    from .routes.telegram_routes import telegram_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(bots_bp)
+    app.register_blueprint(telegram_bp)
 
     # Create database tables
     with app.app_context():
