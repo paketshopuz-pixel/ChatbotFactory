@@ -1,0 +1,219 @@
+Prompt: 1-Bosqich - Foydalanuvchi Autentifikatsiyasi
+(Quyidagi matnni to'liq nusxalab, Replit AI'ga joylashtiring)
+
+Salom. Biz "ChatBot Factory" loyihasining 1-bosqichini boshlaymiz: Foydalanuvchi Autentifikatsiyasi.
+
+Sizning vazifangiz — mavjud loyiha poydevoriga foydalanuvchilarni ro'yxatdan o'tkazish, tizimga kiritish va himoyalangan boshqaruv panelini yaratish funksionallarini to'liq qo'shish.
+
+1-VAZIFA: Formalar Faylini Yaratish (chatbot_factory/forms.py)
+
+chatbot_factory/forms.py faylini oching va unga quyidagi kodni to'liq joylashtiring.
+
+Python
+
+# chatbot_factory/forms.py
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from flask_babel import gettext as _
+from .models import User
+
+class RegistrationForm(FlaskForm):
+    username = StringField(_('Username'), validators=[DataRequired(), Length(min=4, max=25)])
+    email = StringField(_('Email'), validators=[DataRequired(), Email()])
+    password = PasswordField(_('Password'), validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField(_('Confirm Password'), validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField(_('Sign Up'))
+
+    def validate_username(self, username):
+        user = User.query.filter_by(username=username.data).first()
+        if user:
+            raise ValidationError(_('That username is taken. Please choose a different one.'))
+
+    def validate_email(self, email):
+        user = User.query.filter_by(email=email.data).first()
+        if user:
+            raise ValidationError(_('That email is already registered.'))
+
+class LoginForm(FlaskForm):
+    email = StringField(_('Email'), validators=[DataRequired(), Email()])
+    password = PasswordField(_('Password'), validators=[DataRequired()])
+    remember = BooleanField(_('Remember Me'))
+    submit = SubmitField(_('Login'))
+2-VAZIFA: Autentifikatsiya Marshrutlarini Yaratish (chatbot_factory/routes/auth_routes.py)
+
+chatbot_factory/routes/auth_routes.py faylidagi mavjud kodni quyidagi to'liq kod bilan almashtiring:
+
+Python
+
+# chatbot_factory/routes/auth_routes.py
+from flask import render_template, url_for, flash, redirect, request, Blueprint
+from flask_login import login_user, current_user, logout_user, login_required
+from flask_babel import gettext as _
+from .. import db
+from ..models import User
+from ..forms import LoginForm, RegistrationForm
+
+auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route("/register", methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data, email=form.email.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash(_('Your account has been created! You are now able to log in.'), 'success')
+        return redirect(url_for('auth.login'))
+    return render_template('register.html', title=_('Register'), form=form)
+
+@auth_bp.route("/login", methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember.data)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('auth.dashboard'))
+        else:
+            flash(_('Login Unsuccessful. Please check email and password.'), 'danger')
+    return render_template('login.html', title=_('Login'), form=form)
+
+@auth_bp.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for('main.index'))
+
+@auth_bp.route("/dashboard")
+@login_required
+def dashboard():
+    return render_template('dashboard.html', title=_('Dashboard'))
+3-VAZIFA: Shablonlarni Yaratish va Yangilash
+
+chatbot_factory/templates/base.html faylini quyidagi kod bilan to'liq almashtiring:
+
+HTML
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>{% if title %}{{ title }} - {% endif %}{{ _('ChatBot Factory') }}</title>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">{{ _('ChatBot Factory') }}</a>
+            <div class="navbar-nav ms-auto">
+                {% if current_user.is_authenticated %}
+                    <a class="nav-item nav-link" href="{{ url_for('auth.dashboard') }}">{{ _('Dashboard') }}</a>
+                    <a class="nav-item nav-link" href="{{ url_for('auth.logout') }}">{{ _('Logout') }}</a>
+                {% else %}
+                    <a class="nav-item nav-link" href="{{ url_for('auth.login') }}">{{ _('Login') }}</a>
+                    <a class="nav-item nav-link" href="{{ url_for('auth.register') }}">{{ _('Register') }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    <main role="main" class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+chatbot_factory/templates/ papkasida register.html nomli yangi fayl yarating:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <div class="col-md-8 offset-md-2">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            <fieldset class="form-group">
+                <legend class="border-bottom mb-4">{{ _('Join Today') }}</legend>
+                <div class="form-group mb-3">{{ form.username.label(class="form-control-label") }} {{ form.username(class="form-control form-control-lg") }}</div>
+                <div class="form-group mb-3">{{ form.email.label(class="form-control-label") }} {{ form.email(class="form-control form-control-lg") }}</div>
+                <div class="form-group mb-3">{{ form.password.label(class="form-control-label") }} {{ form.password(class="form-control form-control-lg") }}</div>
+                <div class="form-group mb-3">{{ form.confirm_password.label(class="form-control-label") }} {{ form.confirm_password(class="form-control form-control-lg") }}</div>
+            </fieldset>
+            <div class="form-group mb-3">{{ form.submit(class="btn btn-primary") }}</div>
+        </form>
+        <div class="border-top pt-3">
+            <small class="text-muted">{{ _('Already Have An Account?') }} <a href="{{ url_for('auth.login') }}">{{ _('Sign In') }}</a></small>
+        </div>
+    </div>
+{% endblock content %}
+chatbot_factory/templates/login.html faylini quyidagi kod bilan almashtiring:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <div class="col-md-8 offset-md-2">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            <fieldset class="form-group">
+                <legend class="border-bottom mb-4">{{ _('Log In') }}</legend>
+                <div class="form-group mb-3">{{ form.email.label(class="form-control-label") }} {{ form.email(class="form-control form-control-lg") }}</div>
+                <div class="form-group mb-3">{{ form.password.label(class="form-control-label") }} {{ form.password(class="form-control form-control-lg") }}</div>
+                <div class="form-check mb-3">{{ form.remember(class="form-check-input") }} {{ form.remember.label(class="form-check-label") }}</div>
+            </fieldset>
+            <div class="form-group mb-3">{{ form.submit(class="btn btn-primary") }}</div>
+        </form>
+        <div class="border-top pt-3">
+            <small class="text-muted">{{ _('Need An Account?') }} <a href="{{ url_for('auth.register') }}">{{ _('Sign Up Now') }}</a></small>
+        </div>
+    </div>
+{% endblock content %}
+chatbot_factory/templates/ papkasida dashboard.html nomli yangi fayl yarating:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Welcome to your Dashboard,') }} {{ current_user.username }}!</h1>
+    <p>{{ _('This is your personal space. Bot management features will appear here soon.') }}</p>
+{% endblock %}
+4-VAZIFA: Yakuniy Hisobotni Yaratish
+Barcha topshiriqlarni bajarib bo'lgach, loyiha ildiz papkasida HISOBOT_1-BOSQICH.md nomli fayl yarating va uni quyidagi ma'lumotlar bilan to'ldiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasi Bo'yicha Hisobot (1-Bosqich)
+
+## 1. Xulosa
+Foydalanuvchi autentifikatsiyasi tizimi muvaffaqiyatli implementatsiya qilindi. Foydalanuvchilar ro'yxatdan o'tishi, tizimga kirishi va himoyalangan sahifalarga kirishi mumkin.
+
+## 2. Bajarilgan Ishlar
+- [ ] Ro'yxatdan o'tish va kirish uchun `Flask-WTF` formalari `forms.py`'da yaratildi.
+- [ ] `/register`, `/login`, `/logout`, `/dashboard` marshrutlari `auth_routes.py`'da to'liq logikasi bilan yaratildi.
+- [ ] `Flask-Login` yordamida sessiyalarni boshqarish joriy etildi.
+- [ ] Barcha kerakli shablonlar (`register.html`, `login.html`, `dashboard.html`) yaratildi va `base.html` yangilandi.
+
+## 3. Loyihani Tekshirish Yo'riqnomasi
+Quyidagi amallarni bajarib, yangi funksionallikni tekshiring:
+1. Ilovani "Run" qiling va "Register" sahifasiga o'ting, yangi hisob yarating.
+2. "Login" sahifasiga o'ting va shu hisob bilan tizimga kiring.
+3. Tizimga kirgach, "Dashboard" sahifasiga yo'naltirilganingizni tekshiring.
+4. Navigatsiya panelida "Dashboard" va "Logout" linklari paydo bo'lganini tekshiring.
+5. "Logout" tugmasini bosing.
+6. Tizimdan chiqqan holda `/dashboard` manziliga kirishga harakat qiling (sizni "Login" sahifasiga qayta yo'naltirishi kerak).
