@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Profile') }} - {{ _('ChatBot Factory') }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="bi bi-person-gear text-primary"></i>
+                        {{ _('User Profile') }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" name="first_name" id="first_name" placeholder="{{ _('First Name') }}" value="{{ current_user.first_name or '' }}">
+                                    <label for="first_name">{{ _('First Name') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" name="last_name" id="last_name" placeholder="{{ _('Last Name') }}" value="{{ current_user.last_name or '' }}">
+                                    <label for="last_name">{{ _('Last Name') }}</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            <input type="email" class="form-control" name="email" id="email" placeholder="{{ _('Email') }}" value="{{ current_user.email }}" required>
+                            <label for="email">{{ _('Email') }}</label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">{{ _('Update Profile') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

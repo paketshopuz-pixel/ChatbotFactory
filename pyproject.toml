@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "chatbot-factory"
+version = "0.1.0"
+description = "AI ChatBot SaaS Platform"
+authors = ["AI Developer"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Flask = "*"
+Flask-SQLAlchemy = "*"
+Flask-Migrate = "*"
+Flask-Login = "*"
+Flask-Babel = "*"
+Flask-WTF = "*"
+gunicorn = "*"
+python-dotenv = "*"
+google-generativeai = "*"
+psycopg2-binary = "*"
+werkzeug = "*"

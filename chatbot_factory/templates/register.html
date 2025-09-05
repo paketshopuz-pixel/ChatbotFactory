@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Register') }} - {{ _('ChatBot Factory') }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center py-5">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg">
+                <div class="card-header text-center py-4">
+                    <h3 class="card-title mb-0">
+                        <i class="bi bi-person-plus text-primary"></i>
+                        {{ _('Create Account') }}
+                    </h3>
+                    <p class="text-muted mb-0">{{ _('Join ChatBot Factory today') }}</p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" name="first_name" id="first_name" placeholder="{{ _('First Name') }}">
+                                    <label for="first_name">{{ _('First Name') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" name="last_name" id="last_name" placeholder="{{ _('Last Name') }}">
+                                    <label for="last_name">{{ _('Last Name') }}</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" name="username" id="username" placeholder="{{ _('Username') }}" required>
+                            <label for="username">{{ _('Username') }}</label>
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            <input type="email" class="form-control" name="email" id="email" placeholder="{{ _('Email') }}" required>
+                            <label for="email">{{ _('Email') }}</label>
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            <input type="password" class="form-control" name="password" id="password" placeholder="{{ _('Password') }}" required>
+                            <label for="password">{{ _('Password') }}</label>
+                        </div>
+                        
+                        <div class="form-floating mb-4">
+                            <input type="password" class="form-control" name="password2" id="password2" placeholder="{{ _('Repeat Password') }}" required>
+                            <label for="password2">{{ _('Repeat Password') }}</label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">{{ _('Register') }}</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center py-3">
+                    <p class="mb-0 text-muted">
+                        {{ _("Already have an account?") }}
+                        <a href="{{ url_for('auth.login') }}" class="text-decoration-none">
+                            {{ _('Sign in here') }}
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
