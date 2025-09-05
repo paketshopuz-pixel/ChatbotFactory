@@ -3,9 +3,10 @@ from flask import render_template, url_for, flash, redirect, request, Blueprint,
 from flask_login import current_user, login_required
 from flask_babel import gettext as _
 from .. import db
-from ..models import Bot, KnowledgeBase, Product
+from ..models import Bot, KnowledgeBase, Product, BotStatus
 from ..forms import KnowledgeBaseForm, ProductForm
 from ..services.ai_service import ai_service
+from ..routes.telegram_routes import set_telegram_webhook
 import openpyxl
 import os
 import logging
@@ -77,6 +78,40 @@ def bot_chat(bot_id):
     )
     
     return jsonify(response_data)
+
+@knowledge_bp.route("/bot/<int:bot_id>/setup_telegram", methods=['POST'])
+@login_required
+def setup_telegram_webhook(bot_id):
+    """Setup Telegram webhook for the bot"""
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+    
+    if not bot.telegram_token:
+        flash(_('Telegram token not found. Please add a token first.'), 'error')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot_id))
+    
+    # Get domain from environment
+    import os
+    domain = os.environ.get('REPLIT_DEV_DOMAIN')
+    if not domain:
+        flash(_('Domain not found. Cannot setup webhook.'), 'error')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot_id))
+    
+    webhook_url = f"https://{domain}/telegram/webhook/{bot.telegram_token}"
+    
+    # Set webhook
+    result = set_telegram_webhook(bot.telegram_token, webhook_url)
+    
+    if result and result.get('ok'):
+        bot.status = BotStatus.ACTIVE
+        db.session.commit()
+        flash(_('Telegram webhook setup successfully! Your bot is now active.'), 'success')
+    else:
+        flash(_('Failed to setup webhook. Please check your token.'), 'error')
+        logging.error(f"Webhook setup failed: {result}")
+    
+    return redirect(url_for('knowledge.manage_knowledge', bot_id=bot_id))
 
 @knowledge_bp.route("/bot/<int:bot_id>/knowledge/add_text", methods=['POST'])
 @login_required

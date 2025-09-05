@@ -29,10 +29,39 @@ def telegram_webhook(bot_token):
             logger.warning(f"Bot not found for token: {bot_token}")
             return jsonify({'status': 'bot not found'}), 404
             
+        # Build system prompt with knowledge base
+        knowledge_context = ""
+        
+        # Add text entries
+        if bot.knowledge_base:
+            knowledge_context += "\n\n--- UMUMIY MA'LUMOTLAR BAZASI ---\n"
+            for entry in bot.knowledge_base:
+                knowledge_context += f"MAVZU: {entry.title}\nMA'LUMOT: {entry.content}\n\n"
+        
+        # Add products
+        if bot.products:
+            knowledge_context += "\n\n--- MAHSULOTLAR RO'YXATI ---\n"
+            for product in bot.products:
+                knowledge_context += f"MAHSULOT NOMI: {product.name}\n"
+                if product.price:
+                    knowledge_context += f"NARXI: {product.price}\n"
+                if product.description:
+                    knowledge_context += f"TAVSIFI: {product.description}\n"
+                if product.image_url:
+                    knowledge_context += f"RASM HAVOLASI: {product.image_url}\n"
+                knowledge_context += "---\n"
+
+        if knowledge_context:
+            knowledge_context += "--- BILIMLAR BAZASI TUGADI ---\n"
+            knowledge_context += "Foydalanuvchi savoliga javob berish uchun YUQORIDAGI BILIMLAR BAZASIDAN (Umumiy ma'lumotlar va Mahsulotlar) birinchi navbatda foydalaning. Agar savol bu ma'lumotlarga aloqador bo'lmasa, umumiy bilimingizdan foydalanib javob bering."
+
+        system_prompt = f"{bot.system_prompt}\nSizning ismingiz \"{bot.name}\".\n{knowledge_context}"
+        
         # Generate AI response
         response_data = ai_service.generate_response(
             prompt=text,
-            system_prompt=bot.system_prompt
+            system_prompt=system_prompt,
+            bot=bot
         )
         
         response_text = response_data.get('response', 'Kechirasiz, javob berish uchun xatolik yuz berdi.')
