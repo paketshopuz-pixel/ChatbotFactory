@@ -19,6 +19,22 @@ class AIService:
             logging.error(f"Error configuring Gemini AI: {e}")
             self.model = None
 
+    def generate_response(self, prompt, system_prompt, bot=None):
+        """Sync method for generating response"""
+        if not self.model:
+            return {"response": "Kechirasiz, AI xizmati hozirda mavjud emas."}
+        
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(temperature=0.7),
+                system_instruction=system_prompt
+            )
+            return {"response": response.text.strip()}
+        except Exception as e:
+            logging.error(f"AI Service error during response generation: {e}")
+            return {"response": "Texnik nosozliklar tufayli javob bera olmayman."}
+
     async def get_response(self, bot, user_message):
         if not self.model:
             return "Sorry, the AI service is currently unavailable."

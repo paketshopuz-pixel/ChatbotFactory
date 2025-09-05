@@ -1,10 +1,11 @@
 # chatbot_factory/routes/knowledge_routes.py
-from flask import render_template, url_for, flash, redirect, request, Blueprint, abort
+from flask import render_template, url_for, flash, redirect, request, Blueprint, abort, jsonify
 from flask_login import current_user, login_required
 from flask_babel import gettext as _
 from .. import db
 from ..models import Bot, KnowledgeBase, Product
 from ..forms import KnowledgeBaseForm, ProductForm
+from ..services.ai_service import ai_service
 import openpyxl
 import os
 import logging
@@ -25,6 +26,57 @@ def manage_knowledge(bot_id):
     products = bot.products
     return render_template('knowledge_base.html', title=_('Knowledge Base'), bot=bot, 
                            text_form=text_form, entries=entries, products=products)
+
+@knowledge_bp.route("/bot/<int:bot_id>/chat", methods=['POST'])
+@login_required
+def bot_chat(bot_id):
+    """Chat endpoint for testing bot responses"""
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+    
+    data = request.get_json()
+    if not data or 'message' not in data:
+        return jsonify({'error': 'Message is required'}), 400
+    
+    user_message = data['message']
+    
+    # Build system prompt with knowledge base
+    knowledge_context = ""
+    
+    # Add text entries
+    if bot.knowledge_base:
+        knowledge_context += "\n\n--- UMUMIY MA'LUMOTLAR BAZASI ---\n"
+        for entry in bot.knowledge_base:
+            knowledge_context += f"MAVZU: {entry.title}\nMA'LUMOT: {entry.content}\n\n"
+    
+    # Add products
+    if bot.products:
+        knowledge_context += "\n\n--- MAHSULOTLAR RO'YXATI ---\n"
+        for product in bot.products:
+            knowledge_context += f"MAHSULOT NOMI: {product.name}\n"
+            if product.price:
+                knowledge_context += f"NARXI: {product.price}\n"
+            if product.description:
+                knowledge_context += f"TAVSIFI: {product.description}\n"
+            if product.image_url:
+                knowledge_context += f"RASM HAVOLASI: {product.image_url}\n"
+            knowledge_context += "---\n"
+
+    if knowledge_context:
+        knowledge_context += "--- BILIMLAR BAZASI TUGADI ---\n"
+        knowledge_context += "Foydalanuvchi savoliga javob berish uchun YUQORIDAGI BILIMLAR BAZASIDAN (Umumiy ma'lumotlar va Mahsulotlar) birinchi navbatda foydalaning. Agar savol bu ma'lumotlarga aloqador bo'lmasa, umumiy bilimingizdan foydalanib javob bering."
+
+    system_prompt = f"{bot.system_prompt}\nSizning ismingiz \"{bot.name}\".\n{knowledge_context}"
+    
+    # Get AI response
+    response_data = ai_service.generate_response(
+        prompt=user_message,
+        system_prompt=system_prompt,
+        bot=bot
+    )
+    
+    return jsonify(response_data)
 
 @knowledge_bp.route("/bot/<int:bot_id>/knowledge/add_text", methods=['POST'])
 @login_required

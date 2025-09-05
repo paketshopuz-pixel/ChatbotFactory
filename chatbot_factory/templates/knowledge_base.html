@@ -4,7 +4,10 @@
 
 <ul class="nav nav-tabs" id="kbTabs" role="tablist">
   <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button" role="tab">{{ _('Products') }}</button>
+    <button class="nav-link active" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab">{{ _('Test Chat') }}</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button" role="tab">{{ _('Products') }}</button>
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="text-tab" data-bs-toggle="tab" data-bs-target="#text" type="button" role="tab">{{ _('Text Entries') }}</button>
@@ -12,7 +15,30 @@
 </ul>
 
 <div class="tab-content" id="kbTabsContent">
-  <div class="tab-pane fade show active" id="products" role="tabpanel">
+  <div class="tab-pane fade show active" id="chat" role="tabpanel">
+    <div class="p-3 border border-top-0">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">{{ _('Test Your Chatbot') }}</h5>
+          <small class="text-muted">{{ _('Try asking questions about your products or knowledge base') }}</small>
+        </div>
+        <div class="card-body">
+          <div id="chatMessages" style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; margin-bottom: 10px; background-color: var(--bg-darker);">
+            <div class="chat-message bot-message">
+              <strong>{{ bot.name }}:</strong> Assalomu alaykum! Men sizning {{ bot.name }} botingizman. Savolingizni bering.
+            </div>
+          </div>
+          <form id="chatForm" onsubmit="sendMessage(event)">
+            <div class="input-group">
+              <input type="text" id="messageInput" class="form-control" placeholder="{{ _('Type your message...') }}" required>
+              <button type="submit" class="btn btn-primary">{{ _('Send') }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-pane fade" id="products" role="tabpanel">
     <div class="p-3 border border-top-0">
         <div class="card mb-4">
             <div class="card-body">
@@ -92,4 +118,82 @@
   </div>
 </div>
 <a href="{{ url_for('auth.dashboard') }}" class="btn btn-secondary mt-4">{{ _('Back to Dashboard') }}</a>
+
+<script>
+function sendMessage(event) {
+    event.preventDefault();
+    
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addMessageToChat('Siz', message, 'user-message');
+    messageInput.value = '';
+    
+    // Show loading message
+    addMessageToChat('{{ bot.name }}', 'Javob tayyorlanmoqda...', 'bot-message', true);
+    
+    // Send message to server
+    fetch(`/bot/{{ bot.id }}/chat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Remove loading message
+        removeLoadingMessage();
+        
+        // Add bot response
+        addMessageToChat('{{ bot.name }}', data.response || 'Kechirasiz, xatolik yuz berdi.', 'bot-message');
+    })
+    .catch(error => {
+        removeLoadingMessage();
+        addMessageToChat('{{ bot.name }}', 'Xatolik: Javob olishda muammo yuz berdi.', 'bot-message');
+    });
+}
+
+function addMessageToChat(sender, message, className, isLoading = false) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${className}`;
+    if (isLoading) messageDiv.id = 'loadingMessage';
+    
+    messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeLoadingMessage() {
+    const loadingMessage = document.getElementById('loadingMessage');
+    if (loadingMessage) {
+        loadingMessage.remove();
+    }
+}
+</script>
+
+<style>
+.chat-message {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 8px;
+}
+
+.user-message {
+    background-color: var(--accent-color);
+    color: white;
+    margin-left: 20%;
+}
+
+.bot-message {
+    background-color: var(--bg-lighter);
+    border: 1px solid var(--border-color);
+    margin-right: 20%;
+}
+</style>
+
 {% endblock %}
