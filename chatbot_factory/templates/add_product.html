@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="col-md-8 offset-md-2">
+    <h3>{{ _('Add New Product to') }} "{{ bot.name }}"</h3>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">{{ form.name.label(class="form-label") }} {{ form.name(class="form-control") }}</div>
+        <div class="mb-3">{{ form.price.label(class="form-label") }} {{ form.price(class="form-control") }}</div>
+        <div class="mb-3">{{ form.description.label(class="form-label") }} {{ form.description(class="form-control", rows="4") }}</div>
+        <div class="mb-3">{{ form.image_url.label(class="form-label") }} {{ form.image_url(class="form-control") }}</div>
+        <div class="mb-3">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('knowledge.manage_knowledge', bot_id=bot.id) }}" class="btn btn-secondary">{{ _('Cancel') }}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

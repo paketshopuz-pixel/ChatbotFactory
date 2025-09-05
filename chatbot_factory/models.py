@@ -74,6 +74,7 @@ class Bot(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     knowledge_base = db.relationship('KnowledgeBase', backref='bot', lazy=True, cascade='all, delete-orphan')
+    products = db.relationship('Product', backref='bot_owner', lazy=True, cascade='all, delete-orphan')
 
 class KnowledgeBase(db.Model):
     __tablename__ = 'knowledge_base'
@@ -81,6 +82,16 @@ class KnowledgeBase(db.Model):
     bot_id = db.Column(db.Integer, db.ForeignKey('bots.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
+
+class Product(db.Model):
+    __tablename__ = 'products'
+    id = db.Column(db.Integer, primary_key=True)
+    bot_id = db.Column(db.Integer, db.ForeignKey('bots.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    price = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    image_url = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class AdminBroadcast(db.Model):
     __tablename__ = 'admin_broadcasts'

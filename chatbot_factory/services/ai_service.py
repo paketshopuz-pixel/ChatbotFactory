@@ -3,14 +3,11 @@ import os
 import logging
 import google.generativeai as genai
 
-# Bu faylda DB bilan ishlash uchun models.py ni import qilamiz
-from ..models import KnowledgeBase 
-
 class AIService:
     def __init__(self):
-        api_key = os.environ.get("GOOGLE_API_KEY")
+        api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            logging.warning("GOOGLE_API_KEY not found. AI responses will be disabled.")
+            logging.warning("GEMINI_API_KEY not found. AI responses will be disabled.")
             self.model = None
             return
         
@@ -27,15 +24,30 @@ class AIService:
             return "Sorry, the AI service is currently unavailable."
         
         try:
-            # --- BILIMLAR BAZASI INTEGRATSIYASI ---
+            # Matnli bilimlar bazasini yig'ish
             knowledge_context = ""
-            entries = bot.knowledge_base
-            if entries:
-                knowledge_context += "\n\n--- MUHIM BILIMLAR BAZASI ---\n"
-                for entry in entries:
+            text_entries = bot.knowledge_base
+            if text_entries:
+                knowledge_context += "\n\n--- UMUMIY MA'LUMOTLAR BAZASI ---\n"
+                for entry in text_entries:
                     knowledge_context += f"MAVZU: {entry.title}\nMA'LUMOT: {entry.content}\n\n"
-                knowledge_context += "--- BILIMLAR BAZASI TUGADI ---\n"
-                knowledge_context += "Foydalanuvchi savoliga javob berish uchun YUQORIDAGI BILIMLAR BAZASIDAN foydalaning. Agar savol bu ma'lumotlarga aloqador bo'lmasa, umumiy bilimingizdan foydalanib javob bering."
+            
+            # Mahsulotlar bazasini yig'ish
+            product_entries = bot.products
+            if product_entries:
+                knowledge_context += "\n\n--- MAHSULOTLAR RO'YXATI ---\n"
+                for product in product_entries:
+                    knowledge_context += f"MAHSULOT NOMI: {product.name}\n"
+                    if product.price:
+                        knowledge_context += f"NARXI: {product.price}\n"
+                    if product.description:
+                        knowledge_context += f"TAVSIFI: {product.description}\n"
+                    if product.image_url:
+                        knowledge_context += f"RASM HAVOLASI: {product.image_url}\n"
+                    knowledge_context += "---\n"
+
+            knowledge_context += "--- BILIMLAR BAZASI TUGADI ---\n"
+            knowledge_context += "Foydalanuvchi savoliga javob berish uchun YUQORIDAGI BILIMLAR BAZASIDAN (Umumiy ma'lumotlar va Mahsulotlar) birinchi navbatda foydalaning. Agar savol bu ma'lumotlarga aloqador bo'lmasa, umumiy bilimingizdan foydalanib javob bering."
 
             system_instruction = f"{bot.system_prompt}\nSizning ismingiz \"{bot.name}\".\n{knowledge_context}"
             
@@ -47,7 +59,7 @@ class AIService:
             return response.text.strip()
         except Exception as e:
             logging.error(f"AI Service error during response generation: {e}")
-            return "Texnik nosozliklar tufayli javob bera olmayman. Iltimos, keyinroq qayta urinib ko'ring."
+            return "Texnik nosozliklar tufayli javob bera olmayman."
 
 # Global AI service instance
 ai_service = AIService()

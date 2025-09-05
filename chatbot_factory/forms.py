@@ -40,3 +40,10 @@ class KnowledgeBaseForm(FlaskForm):
     title = StringField(_('Title (e.g., "Product Price" or "Return Policy")'), validators=[DataRequired(), Length(max=200)])
     content = TextAreaField(_('Content (The information the bot should know)'), validators=[DataRequired()])
     submit = SubmitField(_('Save Entry'))
+
+class ProductForm(FlaskForm):
+    name = StringField(_('Product Name'), validators=[DataRequired(), Length(max=200)])
+    price = StringField(_('Price (e.g., 25,000 so\'m or $10)'))
+    description = TextAreaField(_('Description'))
+    image_url = StringField(_('Image URL (optional)'))
+    submit = SubmitField(_('Save Product'))
