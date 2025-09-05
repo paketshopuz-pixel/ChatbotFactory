@@ -3,7 +3,7 @@ from flask import render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_required
 from flask_babel import gettext as _
 from .. import db
-from ..models import User, Bot, AdminBroadcast, SubscriptionType
+from ..models import User, Bot, AdminBroadcast
 from ..utils.decorators import admin_required
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -38,7 +38,7 @@ def broadcasts():
             broadcast = AdminBroadcast(
                 title=title,
                 content=content,
-                target_plan=SubscriptionType(target_plan) if target_plan and target_plan != 'all' else None
+                target_plan=target_plan if target_plan and target_plan != 'all' else None
             )
             db.session.add(broadcast)
             db.session.commit()
@@ -49,5 +49,6 @@ def broadcasts():
         return redirect(url_for('admin.broadcasts'))
         
     all_broadcasts = AdminBroadcast.query.order_by(AdminBroadcast.created_at.desc()).all()
+    subscription_plans = ['basic', 'standard', 'premium']
     return render_template('admin/broadcasts.html', title=_('Broadcasts'), 
-                         broadcasts=all_broadcasts, plans=SubscriptionType)
+                         broadcasts=all_broadcasts, plans=subscription_plans)

@@ -69,12 +69,12 @@ def create_app():
     # E'lonlarni yuklovchi funksiya
     @app.before_request
     def load_announcements():
-        from .models import AdminBroadcast, SubscriptionType
+        from .models import AdminBroadcast
         g.announcements = []
         if current_user.is_authenticated and not getattr(current_user, 'is_admin', False):
             g.announcements = AdminBroadcast.query.filter(
                 (AdminBroadcast.target_plan == None) | 
-                (AdminBroadcast.target_plan == current_user.subscription.subscription_type)
+                (AdminBroadcast.target_plan == 'all')
             ).order_by(AdminBroadcast.created_at.desc()).limit(3).all()
 
     # Create database tables

@@ -22,7 +22,7 @@
                             <select class="form-select" name="target_plan">
                                 <option value="all">{{ _('All Users') }}</option>
                                 {% for plan in plans %}
-                                    <option value="{{ plan.value }}">{{ plan.value.title() }}</option>
+                                    <option value="{{ plan }}">{{ plan.title() }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -45,7 +45,7 @@
                                 <small class="text-muted">
                                     {{ _('Target:') }} 
                                     {% if broadcast.target_plan %}
-                                        {{ broadcast.target_plan.value.title() }}
+                                        {{ broadcast.target_plan.title() }}
                                     {% else %}
                                         {{ _('All Users') }}
                                     {% endif %}
