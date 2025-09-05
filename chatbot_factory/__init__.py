@@ -32,6 +32,7 @@ def create_app():
         },
         WTF_CSRF_ENABLED=True,
         WTF_CSRF_TIME_LIMIT=3600,
+        INSTANCE_PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance'),
     )
 
     # Initialize extensions with app

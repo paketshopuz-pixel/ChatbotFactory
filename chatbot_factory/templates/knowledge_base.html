@@ -14,6 +14,20 @@
 <div class="tab-content" id="kbTabsContent">
   <div class="tab-pane fade show active" id="products" role="tabpanel">
     <div class="p-3 border border-top-0">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">{{ _('Bulk Upload Products via Excel') }}</h5>
+                <p class="card-text"><small>{{ _('Use our template to upload multiple products at once.') }}</small></p>
+                <form method="POST" action="{{ url_for('knowledge.upload_products', bot_id=bot.id) }}" enctype="multipart/form-data">
+                    <div class="input-group">
+                        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                        <button class="btn btn-success" type="submit">{{ _('Upload File') }}</button>
+                    </div>
+                </form>
+                <a href="{{ url_for('main.download_template') }}" class="btn btn-link btn-sm mt-2">{{ _('Download Template') }}</a>
+            </div>
+        </div>
+        <hr>
         <a href="{{ url_for('knowledge.add_product', bot_id=bot.id) }}" class="btn btn-primary mb-3">{{ _('Add New Product') }}</a>
         {% if products %}
             {% for product in products %}

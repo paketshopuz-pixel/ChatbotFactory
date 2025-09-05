@@ -1,5 +1,5 @@
 # chatbot_factory/routes/main_routes.py
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app, abort
 from flask_babel import gettext as _
 from flask_login import login_required, current_user
 from .. import db
@@ -39,3 +39,12 @@ def profile():
 @main_bp.route('/subscriptions')
 def subscriptions():
     return render_template('subscriptions.html', title=_('Subscriptions'))
+
+@main_bp.route('/download/product_template')
+@login_required
+def download_template():
+    """Download Excel template for bulk product upload"""
+    try:
+        return send_from_directory(current_app.config['INSTANCE_PATH'], 'product_template.xlsx', as_attachment=True)
+    except FileNotFoundError:
+        abort(404)

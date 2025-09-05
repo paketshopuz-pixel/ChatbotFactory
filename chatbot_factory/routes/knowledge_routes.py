@@ -5,6 +5,7 @@ from flask_babel import gettext as _
 from .. import db
 from ..models import Bot, KnowledgeBase, Product
 from ..forms import KnowledgeBaseForm, ProductForm
+import openpyxl
 
 knowledge_bp = Blueprint('knowledge', __name__)
 
@@ -74,4 +75,45 @@ def delete_product(product_id):
     db.session.delete(product)
     db.session.commit()
     flash(_('The product has been deleted.'), 'success')
+    return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+@knowledge_bp.route("/bot/<int:bot_id>/knowledge/upload_products", methods=['POST'])
+@login_required
+def upload_products(bot_id):
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+
+    if 'file' not in request.files:
+        flash(_('No file part'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash(_('No selected file'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+    if file and file.filename.endswith('.xlsx'):
+        try:
+            workbook = openpyxl.load_workbook(file)
+            sheet = workbook.active
+            
+            product_count = 0
+            # Birinchi qator (sarlavha)ni o'tkazib yuborish uchun min_row=2
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                name, price, description, image_url = row[0], row[1], row[2], row[3]
+                if name: # Faqat nomi bor qatorlarni qo'shamiz
+                    product = Product(bot_id=bot.id, name=name, price=price, 
+                                      description=description, image_url=image_url)
+                    db.session.add(product)
+                    product_count += 1
+            
+            db.session.commit()
+            flash(_('%(num)s products have been successfully uploaded!', num=product_count), 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(_('An error occurred while processing the file. Please check the format. Error: %(error)s', error=str(e)), 'danger')
+    else:
+        flash(_('Invalid file type. Please upload a .xlsx file.'), 'danger')
+        
     return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))

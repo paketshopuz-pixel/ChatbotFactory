@@ -1,0 +1,147 @@
+Salom. Biz Kengaytirilgan Bilimlar Bazasining keyingi qismini boshlaymiz: 5b-Bosqich - Mahsulotlarni Ommaviy Yuklash (Excel).
+
+Sizning vazifangiz — foydalanuvchilarga mahsulotlar ro'yxatini .xlsx formatidagi Excel fayli orqali ommaviy yuklash imkonini beruvchi tizimni yaratish.
+
+1-VAZIFA: Yangi Bog'liqlikni Qo'shish
+
+Excel fayllarini o'qish uchun openpyxl kutubxonasini loyihaga qo'shing. pyproject.toml faylidagi [tool.poetry.dependencies] bo'limiga yangi qator qo'shing:
+
+Ini, TOML
+
+openpyxl = "*"
+Faylni saqlaganingizdan so'ng Replit kerakli paketni avtomatik o'rnatadi.
+
+2-VAZIFA: Namuna Excel Faylini Yaratish
+
+Foydalanuvchilar to'g'ri formatdan foydalanishi uchun biz ularga namuna faylini taqdim etamiz.
+
+Loyiha ildiz papkasida instance nomli yangi papka yarating.
+
+Ushbu papka ichida product_template.xlsx nomli Excel faylini yarating.
+
+Bu faylning birinchi qatoriga quyidagi ustun nomlarini yozing:
+
+A1: Nomi
+
+B1: Narxi
+
+C1: Tavsifi
+
+D1: Rasm URL
+
+3-VAZIFA: Namuna Faylini Yuklab Olish Uchun Marshrut Yaratish
+
+chatbot_factory/routes/main_routes.py fayliga namuna faylini yuklab beradigan yangi marshrut qo'shing.
+
+Python
+
+# chatbot_factory/routes/main_routes.py fayliga qo'shimcha
+from flask import send_from_directory, current_app
+
+@main_bp.route('/download/product_template')
+@login_required # Faqat tizimga kirganlar yuklay olsin
+def download_template():
+    try:
+        return send_from_directory(current_app.config['INSTANCE_PATH'], 'product_template.xlsx', as_attachment=True)
+    except FileNotFoundError:
+        abort(404)
+
+# chatbot_factory/__init__.py faylidagi create_app funksiyasiga quyidagi konfiguratsiyani qo'shing:
+app.config['INSTANCE_PATH'] = os.path.join(app.instance_path)
+4-VAZIFA: Fayl Yuklash Interfeysini Qo'shish
+
+chatbot_factory/templates/knowledge_base.html faylini oching va "Products" tab'ining (<div class="tab-pane ..." id="products" ...>) ichiga, <a> "Add New Product" tugmasidan oldin, quyidagi fayl yuklash formasini qo'shing:
+
+HTML
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">{{ _('Bulk Upload Products via Excel') }}</h5>
+        <p class="card-text"><small>{{ _('Use our template to upload multiple products at once.') }}</small></p>
+        <form method="POST" action="{{ url_for('knowledge.upload_products', bot_id=bot.id) }}" enctype="multipart/form-data">
+            <div class="input-group">
+                <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                <button class="btn btn-success" type="submit">{{ _('Upload File') }}</button>
+            </div>
+        </form>
+        <a href="{{ url_for('main.download_template') }}" class="btn btn-link btn-sm mt-2">{{ _('Download Template') }}</a>
+    </div>
+</div>
+<hr>
+5-VAZIFA: Faylni Qabul Qilish va Tahlil Qilish Logikasini Yaratish
+
+chatbot_factory/routes/knowledge_routes.py fayliga yuklangan faylni qabul qilib, uni tahlil qiladigan yangi marshrut qo'shing.
+
+Python
+
+# chatbot_factory/routes/knowledge_routes.py fayliga qo'shimcha
+import openpyxl
+
+@knowledge_bp.route("/bot/<int:bot_id>/knowledge/upload_products", methods=['POST'])
+@login_required
+def upload_products(bot_id):
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+
+    if 'file' not in request.files:
+        flash(_('No file part'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash(_('No selected file'), 'danger')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+    if file and file.filename.endswith('.xlsx'):
+        try:
+            workbook = openpyxl.load_workbook(file)
+            sheet = workbook.active
+            
+            product_count = 0
+            # Birinchi qator (sarlavha)ni o'tkazib yuborish uchun min_row=2
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                name, price, description, image_url = row[0], row[1], row[2], row[3]
+                if name: # Faqat nomi bor qatorlarni qo'shamiz
+                    product = Product(bot_id=bot.id, name=name, price=price, 
+                                      description=description, image_url=image_url)
+                    db.session.add(product)
+                    product_count += 1
+            
+            db.session.commit()
+            flash(_('%(num)s products have been successfully uploaded!', num=product_count), 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(_('An error occurred while processing the file. Please check the format. Error: %(error)s', error=str(e)), 'danger')
+    else:
+        flash(_('Invalid file type. Please upload a .xlsx file.'), 'danger')
+        
+    return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+
+6-VAZIFA: Yakuniy Hisobotni Yaratish
+
+HISOBOT_5b-BOSQICH.md nomli fayl yarating va unga quyidagi ma'lumotlarni joylashtiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasi Bo'yicha Hisobot (5b-Bosqich)
+
+## 1. Xulosa
+Bilimlar bazasiga mahsulotlarni Excel fayli orqali ommaviy yuklash funksionali muvaffaqiyatli amalga oshirildi. Bu foydalanuvchilarga ko'p sonli mahsulotlarni kiritish jarayonini sezilarli darajada tezlashtiradi.
+
+## 2. Bajarilgan Ishlar
+- [ ] `openpyxl` kutubxonasi loyihaga qo'shildi.
+- [ ] Foydalanuvchilar uchun namuna Excel fayli (`product_template.xlsx`) va uni yuklab olish uchun marshrut yaratildi.
+- [ ] Bilimlar bazasi sahifasiga fayl yuklash uchun interfeys qo'shildi.
+- [ ] Yuklangan `.xlsx` faylini qabul qilish, tahlil qilish va ma'lumotlarni bazaga saqlash uchun server logikasi to'liq yozildi.
+- [ ] Jarayon davomida yuzaga kelishi mumkin bo'lgan xatoliklarni ushlash mexanizmi qo'shildi.
+
+## 3. Loyihani Tekshirish Yo'riqnomasi
+Quyidagi amallarni bajarib, yangi funksionallikni tekshiring:
+1. Tizimga kiring va biror bot uchun "Knowledge Base" sahifasiga o'ting.
+2. "Products" tab'ida yangi "Bulk Upload" bo'limi paydo bo'lganini tekshiring.
+3. "Download Template" havolasini bosing va `product_template.xlsx` fayli yuklanganiga ishonch hosil qiling.
+4. Yuklangan faylni oching va unga 3-4 ta mahsulot ma'lumotlarini kiriting va saqlang.
+5. "Upload File" formasidan foydalanib, to'ldirilgan faylni yuklang.
+6. **Kutilayotgan Natija:** Muvaffaqiyatli yuklanganlik haqida xabar chiqishi va yangi mahsulotlar sahifadagi ro'yxatda paydo bo'lishi kerak.
+7. Botni ishga tushirib, Telegram'da yangi qo'shilgan mahsulotlardan biri haqida savol berib, AI to'g'ri javob b
