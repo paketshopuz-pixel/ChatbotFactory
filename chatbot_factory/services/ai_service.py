@@ -25,10 +25,12 @@ class AIService:
             return {"response": "Kechirasiz, AI xizmati hozirda mavjud emas."}
         
         try:
+            # Combine system prompt with user message
+            full_prompt = f"{system_prompt}\n\nFoydalanuvchi: {prompt}\nJavob:"
+            
             response = self.model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(temperature=0.7),
-                system_instruction=system_prompt
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(temperature=0.7)
             )
             return {"response": response.text.strip()}
         except Exception as e:
