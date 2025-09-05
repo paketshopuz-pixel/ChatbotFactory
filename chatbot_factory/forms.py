@@ -1,6 +1,6 @@
 # chatbot_factory/forms.py
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_babel import gettext as _
 from .models import User, PlatformType
@@ -35,3 +35,8 @@ class BotForm(FlaskForm):
                                 validators=[DataRequired()])
     telegram_token = StringField(_('Telegram Bot Token'))
     submit = SubmitField(_('Save Bot'))
+
+class KnowledgeBaseForm(FlaskForm):
+    title = StringField(_('Title (e.g., "Product Price" or "Return Policy")'), validators=[DataRequired(), Length(max=200)])
+    content = TextAreaField(_('Content (The information the bot should know)'), validators=[DataRequired()])
+    submit = SubmitField(_('Save Entry'))

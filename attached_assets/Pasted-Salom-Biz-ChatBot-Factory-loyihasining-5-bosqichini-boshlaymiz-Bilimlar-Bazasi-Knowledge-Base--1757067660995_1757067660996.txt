@@ -1,0 +1,215 @@
+Salom. Biz "ChatBot Factory" loyihasining 5-bosqichini boshlaymiz: Bilimlar Bazasi (Knowledge Base).
+
+Sizning vazifangiz — foydalanuvchilarga har bir bot uchun maxsus ma'lumotlar (masalan, mahsulot narxi, kompaniya siyosati) qo'shish imkonini beruvchi tizimni yaratish va AI servisiga ushbu ma'lumotlardan foydalanib javob berishni o'rgatish.
+
+1-VAZIFA: Forma Yaratish (chatbot_factory/forms.py)
+
+chatbot_factory/forms.py faylini ochib, unga KnowledgeBaseForm nomli yangi klass qo'shing.
+
+Python
+
+# chatbot_factory/forms.py ga qo'shimcha
+
+class KnowledgeBaseForm(FlaskForm):
+    title = StringField(_('Title (e.g., "Product Price" or "Return Policy")'), validators=[DataRequired(), Length(max=200)])
+    content = TextAreaField(_('Content (The information the bot should know)'), validators=[DataRequired()])
+    submit = SubmitField(_('Save Entry'))
+2-VAZIFA: Bilimlar Bazasi Uchun Marshrutlar Yaratish
+
+chatbot_factory/routes/ papkasida knowledge_routes.py nomli yangi fayl yarating va unga quyidagi kodni to'liq joylashtiring:
+
+Python
+
+# chatbot_factory/routes/knowledge_routes.py
+from flask import render_template, url_for, flash, redirect, request, Blueprint, abort
+from flask_login import current_user, login_required
+from flask_babel import gettext as _
+from .. import db
+from ..models import Bot, KnowledgeBase
+from ..forms import KnowledgeBaseForm
+
+knowledge_bp = Blueprint('knowledge', __name__)
+
+@knowledge_bp.route("/bot/<int:bot_id>/knowledge", methods=['GET', 'POST'])
+@login_required
+def manage_knowledge(bot_id):
+    bot = Bot.query.get_or_404(bot_id)
+    if bot.owner != current_user:
+        abort(403)
+    
+    form = KnowledgeBaseForm()
+    if form.validate_on_submit():
+        entry = KnowledgeBase(title=form.title.data, content=form.content.data, bot=bot)
+        db.session.add(entry)
+        db.session.commit()
+        flash(_('New knowledge base entry has been added!'), 'success')
+        return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+    
+    entries = bot.knowledge_base
+    return render_template('knowledge_base.html', title=_('Knowledge Base'), bot=bot, form=form, entries=entries)
+
+@knowledge_bp.route("/knowledge/<int:entry_id>/delete", methods=['POST'])
+@login_required
+def delete_knowledge(entry_id):
+    entry = KnowledgeBase.query.get_or_404(entry_id)
+    bot = entry.bot
+    if bot.owner != current_user:
+        abort(403)
+    
+    db.session.delete(entry)
+    db.session.commit()
+    flash(_('The entry has been deleted.'), 'success')
+    return redirect(url_for('knowledge.manage_knowledge', bot_id=bot.id))
+3-VAZIFA: Yangi Blueprint'ni Ro'yxatdan O'tkazish (chatbot_factory/__init__.py)
+
+chatbot_factory/__init__.py faylida yangi knowledge_bp'ni ro'yxatdan o'tkazing: from .routes.knowledge_routes import knowledge_bp qatorini importlarga qo'shing va app.register_blueprint(knowledge_bp) qatorini boshqa blueprint'lar yoniga qo'shing.
+
+4-VAZIFA: AI Servisini Bilimlar Bazasidan Foydalanishga O'rgatish
+
+chatbot_factory/services/ai_service.py faylidagi kodni quyidagi yangilangan versiya bilan to'liq almashtiring. Bu get_response funksiyasiga bilimlar bazasidan ma'lumotlarni yig'ib, AI'ga yuborish mantig'ini qo'shadi.
+
+Python
+
+# chatbot_factory/services/ai_service.py
+import os
+import logging
+import google.generativeai as genai
+
+# Bu faylda DB bilan ishlash uchun models.py ni import qilamiz
+from ..models import KnowledgeBase 
+
+class AIService:
+    def __init__(self):
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            logging.warning("GEMINI_API_KEY not found. AI responses will be disabled.")
+            self.model = None
+            return
+        
+        try:
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            logging.info("Google Gemini AI service configured successfully.")
+        except Exception as e:
+            logging.error(f"Error configuring Gemini AI: {e}")
+            self.model = None
+
+    async def get_response(self, bot, user_message):
+        if not self.model:
+            return "Sorry, the AI service is currently unavailable."
+        
+        try:
+            # --- BILIMLAR BAZASI INTEGRATSIYASI ---
+            knowledge_context = ""
+            entries = bot.knowledge_base
+            if entries:
+                knowledge_context += "\n\n--- MUHIM BILIMLAR BAZASI ---\n"
+                for entry in entries:
+                    knowledge_context += f"MAVZU: {entry.title}\nMA'LUMOT: {entry.content}\n\n"
+                knowledge_context += "--- BILIMLAR BAZASI TUGADI ---\n"
+                knowledge_context += "Foydalanuvchi savoliga javob berish uchun YUQORIDAGI BILIMLAR BAZASIDAN foydalaning. Agar savol bu ma'lumotlarga aloqador bo'lmasa, umumiy bilimingizdan foydalanib javob bering."
+
+            system_instruction = f"{bot.system_prompt}\nSizning ismingiz \"{bot.name}\".\n{knowledge_context}"
+            
+            response = await self.model.generate_content_async(
+                user_message,
+                generation_config=genai.types.GenerationConfig(temperature=0.7),
+                system_instruction=system_instruction
+            )
+            return response.text.strip()
+        except Exception as e:
+            logging.error(f"AI Service error during response generation: {e}")
+            return "Texnik nosozliklar tufayli javob bera olmayman. Iltimos, keyinroq qayta urinib ko'ring."
+5-VAZIFA: Interfeysni Yangilash
+
+chatbot_factory/templates/dashboard.html faylini ochib, botlar ro'yxatidagi tugmalar qatoriga "Knowledge Base" uchun yangi link qo'shing:
+
+HTML
+
+<a href="{{ url_for('knowledge.manage_knowledge', bot_id=bot.id) }}" class="btn btn-secondary btn-sm">{{ _('Knowledge Base') }}</a>
+chatbot_factory/templates/ papkasida knowledge_base.html nomli yangi fayl yarating:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Manage Knowledge Base for') }} "{{ bot.name }}"</h1>
+    <div class="row">
+        <div class="col-md-4">
+            <h3>{{ _('Add New Entry') }}</h3>
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.title.label(class="form-label") }}
+                    {{ form.title(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                    {{ form.content.label(class="form-label") }}
+                    {{ form.content(class="form-control", rows="5") }}
+                </div>
+                <div class="mb-3">
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+        <div class="col-md-8">
+            <h3>{{ _('Existing Entries') }}</h3>
+            {% if entries %}
+            <div class="list-group">
+                {% for entry in entries %}
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ entry.title }}</h5>
+                        <form action="{{ url_for('knowledge.delete_knowledge', entry_id=entry.id) }}" method="POST" onsubmit="return confirm('{{ _('Are you sure you want to delete this entry?') }}');">
+                             <button type="submit" class="btn-close" aria-label="Close"></button>
+                        </form>
+                    </div>
+                    <p class="mb-1" style="white-space: pre-wrap;">{{ entry.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">{{ _('This bot has no knowledge base entries yet. Add one using the form on the left.') }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-secondary mt-4">{{ _('Back to Dashboard') }}</a>
+{% endblock %}
+6-VAZIFA: Ma'lumotlar Bazasi Migratsiyasi (Tekshirish Uchun)
+
+KnowledgeBase modeli avvalgi bosqichda qo'shilgan bo'lishi kerak, lekin har ehtimolga qarshi, bazani sinxronlash uchun Shell'da quyidagi buyruqlarni bajaring:
+
+export FLASK_APP=chatbot_factory
+
+flask db migrate -m "Implement Knowledge Base"
+
+flask db upgrade
+
+7-VAZIFA: Yakuniy Hisobotni Yaratish
+Barcha topshiriqlarni bajarib bo'lgach, loyiha ildiz papkasida HISOBOT_5-BOSQICH.md nomli fayl yarating va uni quyidagi ma'lumotlar bilan to'ldiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasi Bo'yicha Hisobot (5-Bosqich)
+
+## 1. Xulosa
+"Bilimlar Bazasi" funksionali muvaffaqiyatli qo'shildi. Foydalanuvchilar endi o'z botlariga maxsus ma'lumotlarni qo'sha oladi va AI ushbu ma'lumotlardan foydalanib, aniqroq va moslashtirilgan javoblarni bera oladi.
+
+## 2. Bajarilgan Ishlar
+- [ ] `KnowledgeBaseForm` formasi `forms.py`'ga qo'shildi.
+- [ ] Bilimlar bazasini boshqarish uchun `knowledge_routes.py`'da yangi `Blueprint` va CRUD marshrutlari yaratildi.
+- [ ] `AIService` bilimlar bazasidagi ma'lumotlarni yig'ib, AI'ga yuboradigan qilib yangilandi.
+- [ ] Foydalanuvchi interfeysida Bilimlar bazasini boshqarish sahifasi (`knowledge_base.html`) yaratildi va Dashboard'ga link qo'shildi.
+- [ ] Ma'lumotlar bazasi migratsiyasi tekshirildi.
+
+## 3. Loyihani Tekshirish Yo'riqnomasi
+Quyidagi amallarni bajarib, yangi funksionallikni tekshiring:
+1.  Dashboard'dan biror bot uchun "Knowledge Base" tugmasini bosing.
+2.  Formadan foydalanib, kamida ikkita ma'lumot kiriting. Masalan:
+    * Mavzu: `Ish vaqti`, Ma'lumot: `Biz Dushanbadan Jumagacha, soat 9:00 dan 18:00 gacha ishlaymiz.`
+    * Mavzu: `Manzil`, Ma'lumot: `Bizning ofisimiz Toshkent sh., Amir Temur ko'chasi, 1-uyda joylashgan.`
+3.  Kiritilgan ma'lumotlar ro'yxatda paydo bo'lganini tekshiring.
+4.  Botni Dashboard'dan ishga tushiring.
+5.  Telegram'da botingizga savol bering: "Ish vaqtingiz qachon?" yoki "Qayerda joylashgansiz?".
+6.  **Kutilayotgan Natija:** Bot siz kiritgan aniq ma'lumotdan foydalanib javob berishi kerak.
+7.  Umumiy savol bering: "Fransiya poytaxti qayer?". Bot bu savolga ham to'g'ri javob berishi kerak.

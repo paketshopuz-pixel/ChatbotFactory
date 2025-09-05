@@ -21,6 +21,7 @@
                     </div>
                     <div>
                         <a href="{{ url_for('bots.edit_bot', bot_id=bot.id) }}" class="btn btn-secondary btn-sm">{{ _('Edit') }}</a>
+                        <a href="{{ url_for('knowledge.manage_knowledge', bot_id=bot.id) }}" class="btn btn-info btn-sm">{{ _('Knowledge Base') }}</a>
                         <form action="{{ url_for('bots.delete_bot', bot_id=bot.id) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ _('Are you sure you want to delete this bot?') }}');">
                             <button type="submit" class="btn btn-danger btn-sm">{{ _('Delete') }}</button>
                         </form>
