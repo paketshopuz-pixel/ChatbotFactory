@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Manage Users') }}</h1>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>{{ _('Username') }}</th>
+                            <th>{{ _('Email') }}</th>
+                            <th>{{ _('Bots') }}</th>
+                            <th>{{ _('Registered') }}</th>
+                            <th>{{ _('Admin') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.bots|length }}</td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge bg-success">{{ _('Yes') }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ _('No') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary mt-3">{{ _('Back to Dashboard') }}</a>
+{% endblock %}

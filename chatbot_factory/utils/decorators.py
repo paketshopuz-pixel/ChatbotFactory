@@ -1,25 +1,13 @@
 # chatbot_factory/utils/decorators.py
-"""
-Utility decorators for the application
-"""
 from functools import wraps
-from flask import abort, flash, redirect, url_for, request
+from flask import abort
 from flask_login import current_user
 
 def admin_required(f):
-    """
-    Decorator that requires user to be an admin
-    Note: Admin functionality is not implemented yet, this is a placeholder
-    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            flash('Please log in to access this page.', 'warning')
-            return redirect(url_for('auth.login'))
-        
-        # TODO: Add admin check when user roles are implemented
-        # For now, all authenticated users have access
-        
+        if not current_user.is_authenticated or not current_user.is_admin:
+            abort(403)  # Forbidden
         return f(*args, **kwargs)
     return decorated_function
 

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Admin Dashboard') }}</h1>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-center p-3">
+                <h5 class="card-title">{{ _('Total Users') }}</h5>
+                <p class="card-text fs-1 text-primary">{{ user_count }}</p>
+                <a href="{{ url_for('admin.users') }}" class="btn btn-primary">{{ _('Manage Users') }}</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center p-3">
+                <h5 class="card-title">{{ _('Total Bots') }}</h5>
+                <p class="card-text fs-1 text-success">{{ bot_count }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center p-3">
+                <h5 class="card-title">{{ _('Broadcasts') }}</h5>
+                <p class="card-text fs-1 text-info">{{ broadcasts_count }}</p>
+                <a href="{{ url_for('admin.broadcasts') }}" class="btn btn-primary">{{ _('Manage Broadcasts') }}</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

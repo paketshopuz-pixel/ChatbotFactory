@@ -1,0 +1,181 @@
+Salom. Biz "ChatBot Factory" loyihasining 6-bosqichini boshlaymiz: Admin Paneli va E'lonlar Tizimi.
+
+Sizning vazifangiz — platformani boshqarish uchun xavfsiz admin hududini yaratish. Bu hududda statistikalarni ko'rish, foydalanuvchilarni boshqarish va e'lonlar yuborish imkoniyatlari bo'lishi kerak.
+
+1-VAZIFA: Administrator Huquqini Tekshiruvchi Dekorator Yaratish
+
+Admin sahifalarini himoyalash uchun maxsus dekorator yaratamiz. chatbot_factory/utils/decorators.py faylini oching va unga quyidagi kodni joylashtiring:
+
+Python
+
+# chatbot_factory/utils/decorators.py
+from functools import wraps
+from flask import abort
+from flask_login import current_user
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+2-VAZIFA: Admin Marshrutlarini Yaratish (admin_routes.py)
+
+chatbot_factory/routes/ papkasida admin_routes.py nomli yangi fayl yarating va unga quyidagi kodni to'liq joylashtiring:
+
+Python
+
+# chatbot_factory/routes/admin_routes.py
+from flask import render_template, url_for, flash, redirect, request, Blueprint
+from flask_login import login_required
+from flask_babel import gettext as _
+from .. import db
+from ..models import User, Bot, AdminBroadcast, SubscriptionType
+from ..utils.decorators import admin_required
+
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+@admin_bp.route('/dashboard')
+@login_required
+@admin_required
+def dashboard():
+    user_count = User.query.count()
+    bot_count = Bot.query.count()
+    return render_template('admin/dashboard.html', title=_('Admin Dashboard'), user_count=user_count, bot_count=bot_count)
+
+@admin_bp.route('/users')
+@login_required
+@admin_required
+def users():
+    all_users = User.query.order_by(User.created_at.desc()).all()
+    return render_template('admin/users.html', title=_('Manage Users'), users=all_users)
+
+@admin_bp.route('/broadcasts', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def broadcasts():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        # Bu yerda formadan kelgan ma'lumotlarni bazaga saqlash logikasi bo'ladi
+        flash(_('New broadcast has been created.'), 'success')
+        return redirect(url_for('admin.broadcasts'))
+        
+    all_broadcasts = AdminBroadcast.query.order_by(AdminBroadcast.created_at.desc()).all()
+    return render_template('admin/broadcasts.html', title=_('Broadcasts'), broadcasts=all_broadcasts, plans=SubscriptionType)
+3-VAZIFA: Yangi Blueprint'ni Ro'yxatdan O'tkazish (__init__.py)
+
+chatbot_factory/__init__.py faylida yangi admin_bp'ni ro'yxatdan o'tkazing: from .routes.admin_routes import admin_bp qatorini importlarga va app.register_blueprint(admin_bp) qatorini boshqa blueprint'lar yoniga qo'shing.
+
+4-VAZIFA: Foydalanuvchilarga E'lonlarni Ko'rsatish Logikasi
+
+chatbot_factory/__init__.py fayliga har bir so'rovdan oldin ishlaydigan va e'lonlarni g obyektiga yuklaydigan funksiya qo'shing:
+
+Python
+
+# chatbot_factory/__init__.py fayliga qo'shimcha
+# Fayl boshiga importlarni qo'shing:
+from flask import g
+from flask_login import current_user
+from .models import AdminBroadcast, SubscriptionType
+
+# create_app funksiyasi ichida, `return app` dan oldin:
+@app.before_request
+def load_announcements():
+    g.announcements = []
+    if current_user.is_authenticated and not current_user.is_admin:
+        g.announcements = AdminBroadcast.query.filter(
+            (AdminBroadcast.target_plan == None) | (AdminBroadcast.target_plan == current_user.subscription.subscription_type)
+        ).order_by(AdminBroadcast.created_at.desc()).all()
+Endi chatbot_factory/templates/dashboard.html faylini ochib, {% block content %}'dan keyin darhol e'lonlar blokini qo'shing:
+
+HTML
+
+{% with announcements = g.announcements %}
+    {% if announcements %}
+        {% for announcement in announcements %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          <strong>{{ announcement.title }}</strong>: {{ announcement.content }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+5-VAZIFA: Admin Shablonlarini Yaratish
+
+chatbot_factory/templates/ papkasi ichida admin nomli yangi papka yarating. Ushbu papka ichiga quyidagi fayllarni yarating:
+
+admin/dashboard.html:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Admin Dashboard') }}</h1>
+    <div class="row">
+        <div class="col-md-4"><div class="card text-center p-3"><h5 class="card-title">{{ _('Total Users') }}</h5><p class="card-text fs-1">{{ user_count }}</p><a href="{{ url_for('admin.users') }}" class="btn btn-primary">{{ _('Manage Users') }}</a></div></div>
+        <div class="col-md-4"><div class="card text-center p-3"><h5 class="card-title">{{ _('Total Bots') }}</h5><p class="card-text fs-1">{{ bot_count }}</p></div></div>
+        <div class="col-md-4"><div class="card text-center p-3"><h5 class="card-title">{{ _('Broadcasts') }}</h5><p class="card-text fs-1">{{ broadcasts_count }}</p><a href="{{ url_for('admin.broadcasts') }}" class="btn btn-primary">{{ _('Manage Broadcasts') }}</a></div></div>
+    </div>
+{% endblock %}
+admin/users.html:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Manage Users') }}</h1>
+    <table class="table table-hover">
+        <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Bots</th><th>Registered</th><th>Admin</th></tr></thead>
+        <tbody>
+            {% for user in users %}
+            <tr><td>{{ user.id }}</td><td>{{ user.username }}</td><td>{{ user.email }}</td><td>{{ user.bots|length }}</td><td>{{ user.created_at.strftime('%Y-%m-%d') }}</td><td>{% if user.is_admin %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+admin/broadcasts.html:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4">{{ _('Manage Broadcasts') }}</h1>
+    <div class="row">
+        <div class="col-md-5">
+            <h3>{{ _('Create New Announcement') }}</h3>
+            <form method="POST">
+                <div class="mb-3"><label for="title" class="form-label">{{ _('Title') }}</label><input type="text" class="form-control" name="title" required></div>
+                <div class="mb-3"><label for="content" class="form-label">{{ _('Content') }}</label><textarea class="form-control" name="content" rows="4" required></textarea></div>
+                <button type="submit" class="btn btn-primary">{{ _('Create') }}</button>
+            </form>
+        </div>
+        <div class="col-md-7">
+            <h3>{{ _('Existing Announcements') }}</h3>
+            {% for broadcast in broadcasts %}<div class="card mb-2"><div class="card-body"><h5 class="card-title">{{ broadcast.title }}</h5><p class="card-text">{{ broadcast.content }}</p></div></div>{% else %}<p>{{ _('No announcements yet.') }}</p>{% endfor %}
+        </div>
+    </div>
+{% endblock %}
+6-VAZIFA: Yakuniy Hisobotni Yaratish
+HISOBOT_6-BOSQICH.md nomli fayl yarating va unga quyidagi ma'lumotlarni joylashtiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasi Bo'yicha Hisobot (6-Bosqich)
+
+## 1. Xulosa
+Platformani boshqarish uchun xavfsiz Admin Paneli va foydalanuvchilar uchun E'lonlar tizimi muvaffaqiyatli amalga oshirildi.
+
+## 2. Bajarilgan Ishlar
+- [ ] Admin huquqini tekshiruvchi `@admin_required` dekoratori yaratildi.
+- [ ] Admin paneli uchun yangi `admin_bp` Blueprint va marshrutlar (`/dashboard`, `/users`, `/broadcasts`) yaratildi.
+- [ ] Foydalanuvchi panelida e'lonlarni ko'rsatish uchun `@app.before_request` logikasi qo'shildi.
+- [ ] Admin interfeysi uchun maxsus shablonlar yaratildi.
+
+## 3. Loyihani Tekshirish Yo'riqnomasi
+1.  **Admin Bo'lish:** `Shell`'da `flask shell` buyrug'ini kiriting. Keyin `from chatbot_factory.models import User, db`, `u = User.query.filter_by(email='sizning_emailingiz@mail.com').first()`, `u.is_admin = True`, `db.session.commit()`, `exit()` buyruqlarini bajaring.
+2.  **Xavfsizlikni Tekshirish:** Oddiy foydalanuvchi hisobida `/admin/dashboard` manziliga kirishga harakat qiling. Sizga 403 (Forbidden) xatoligi chiqishi kerak.
+3.  **Admin Sifatida Kirish:** Admin hisobingiz bilan tizimga kiring va `/admin/dashboard` manziliga o'ting. Panel ochilishi kerak.
+4.  **E'lon Yaratish:** "Broadcasts" bo'limiga o'tib, yangi e'lon yarating.
+5.  **E'lonni Tekshirish:** Tizimdan chiqing va oddiy foydalanuvchi hisobida kiring. Dashboard'da siz yara

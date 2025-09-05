@@ -1,9 +1,9 @@
 # chatbot_factory/__init__.py
 import os
 import logging
-from flask import Flask
+from flask import Flask, g
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from flask_babel import Babel
 
 # Configure logging for better debugging
@@ -58,11 +58,24 @@ def create_app():
     from .routes.bots_routes import bots_bp
     from .routes.telegram_routes import telegram_bp
     from .routes.knowledge_routes import knowledge_bp
+    from .routes.admin_routes import admin_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(bots_bp)
     app.register_blueprint(telegram_bp)
     app.register_blueprint(knowledge_bp)
+    app.register_blueprint(admin_bp)
+
+    # E'lonlarni yuklovchi funksiya
+    @app.before_request
+    def load_announcements():
+        from .models import AdminBroadcast, SubscriptionType
+        g.announcements = []
+        if current_user.is_authenticated and not getattr(current_user, 'is_admin', False):
+            g.announcements = AdminBroadcast.query.filter(
+                (AdminBroadcast.target_plan == None) | 
+                (AdminBroadcast.target_plan == current_user.subscription.subscription_type)
+            ).order_by(AdminBroadcast.created_at.desc()).limit(3).all()
 
     # Create database tables
     with app.app_context():
