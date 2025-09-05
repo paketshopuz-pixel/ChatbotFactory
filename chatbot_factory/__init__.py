@@ -4,6 +4,7 @@ import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_babel import Babel
 
 # Configure logging for better debugging
 logging.basicConfig(level=logging.DEBUG)
@@ -14,6 +15,7 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
 login_manager.login_message = 'Please log in to access this page.'
+babel = Babel()
 
 def create_app():
     """Application factory pattern implementation"""
@@ -35,6 +37,7 @@ def create_app():
     # Initialize extensions with app
     db.init_app(app)
     login_manager.init_app(app)
+    babel.init_app(app)
 
     @login_manager.user_loader
     def load_user(user_id):
