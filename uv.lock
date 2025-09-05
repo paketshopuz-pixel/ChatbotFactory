@@ -146,6 +146,7 @@ dependencies = [
     { name = "gunicorn" },
     { name = "psycopg2-binary" },
     { name = "python-dotenv" },
+    { name = "requests" },
     { name = "werkzeug" },
 ]
 
@@ -162,6 +163,7 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=21.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "requests", specifier = ">=2.31.0" },
     { name = "werkzeug", specifier = ">=2.3.0" },
 ]
 

@@ -14,7 +14,7 @@ class AIService:
     
     def __init__(self):
         self.api_key = os.environ.get("GOOGLE_API_KEY")
-        self.model_name = "gemini-pro"
+        self.model_name = "gemini-1.5-flash"
         self.model = None
         
         if self.api_key:
