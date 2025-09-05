@@ -14,13 +14,14 @@
             <div class="navbar-nav ms-auto">
                 {% if current_user.is_authenticated %}
                     <a class="nav-item nav-link" href="{{ url_for('auth.dashboard') }}">{{ _('Dashboard') }}</a>
-                    {% if current_user.is_admin %}
-                        <a class="nav-item nav-link text-warning" href="{{ url_for('admin.dashboard') }}">{{ _('Admin Panel') }}</a>
-                    {% endif %}
                     <a class="nav-item nav-link" href="{{ url_for('auth.logout') }}">{{ _('Logout') }}</a>
+                {% elif session.get('admin_logged_in') %}
+                    <a class="nav-item nav-link text-warning" href="{{ url_for('admin.dashboard') }}">{{ _('Admin Panel') }}</a>
+                    <a class="nav-item nav-link text-danger" href="{{ url_for('admin.logout') }}">{{ _('Admin Logout') }}</a>
                 {% else %}
                     <a class="nav-item nav-link" href="{{ url_for('auth.login') }}">{{ _('Login') }}</a>
                     <a class="nav-item nav-link" href="{{ url_for('auth.register') }}">{{ _('Register') }}</a>
+                    <a class="nav-item nav-link text-warning" href="{{ url_for('admin.login') }}">{{ _('Admin Login') }}</a>
                 {% endif %}
             </div>
         </div>

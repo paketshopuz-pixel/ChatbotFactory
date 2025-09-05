@@ -1,0 +1,147 @@
+Salom. Biz Admin Paneliga kirish tizimini o'zgartirishimiz kerak. Mavjud foydalanuvchilarni adminga aylantirish o'rniga, bizga butunlay alohida, maxfiy login va parol bilan ishlaydigan tizim kerak.
+
+1-VAZIFA: Maxfiy Login Ma'lumotlarini Sozlash (Ko'rsatma)
+
+Bu tizim xavfsiz bo'lishi uchun login va parol to'g'ridan-to'g'ri kodda yozilmaydi. Ular Replit Secrets (muhit o'zgaruvchilari) orqali sozlanadi.
+Yakuniy hisobotda foydalanuvchiga quyidagi Secrets'ni qo'shish kerakligi haqida yo'riqnoma yozishingiz kerak bo'ladi:
+
+ADMIN_USERNAME (qiymati, masalan: admin)
+
+ADMIN_PASSWORD (qiymati, masalan: juda_kuchli_maxfiy_parol_123)
+
+2-VAZIFA: Admin Huquqini Tekshiruvchi Dekoratorni Qayta Yozish
+
+chatbot_factory/utils/decorators.py faylini oching va undagi admin_required funksiyasining kodini quyidagi yangi versiya bilan to'liq almashtiring:
+
+Python
+
+# chatbot_factory/utils/decorators.py
+from functools import wraps
+from flask import session, redirect, url_for, flash
+from flask_babel import gettext as _
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            flash(_('You need to be logged in as an admin to access this page.'), 'warning')
+            return redirect(url_for('admin.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+3-VAZIFA: Admin Marshrutlariga Login/Logout Funksiyasini Qo'shish
+
+chatbot_factory/routes/admin_routes.py faylini oching va unga admin uchun maxsus login va logout marshrutlarini qo'shing. Faylning umumiy ko'rinishi quyidagicha bo'lsin:
+
+Python
+
+# chatbot_factory/routes/admin_routes.py
+import os
+from flask import render_template, url_for, flash, redirect, request, Blueprint, session
+from flask_babel import gettext as _
+from .. import db
+from ..models import User, Bot, AdminBroadcast, SubscriptionType
+from ..utils.decorators import admin_required
+
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+@admin_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        ADMIN_USER = os.environ.get('ADMIN_USERNAME')
+        ADMIN_PASS = os.environ.get('ADMIN_PASSWORD')
+        
+        if username == ADMIN_USER and password == ADMIN_PASS:
+            session['admin_logged_in'] = True
+            flash(_('Successfully logged in as admin.'), 'success')
+            return redirect(url_for('admin.dashboard'))
+        else:
+            flash(_('Invalid credentials. Please try again.'), 'danger')
+            return redirect(url_for('admin.login'))
+            
+    return render_template('admin/login.html', title=_('Admin Login'))
+
+@admin_bp.route('/logout')
+def logout():
+    session.pop('admin_logged_in', None)
+    flash(_('You have been logged out.'), 'info')
+    return redirect(url_for('admin.login'))
+
+# Mavjud marshrutlar endi yangi dekorator bilan ishlaydi
+@admin_bp.route('/dashboard')
+@admin_required
+def dashboard():
+    user_count = User.query.count()
+    bot_count = Bot.query.count()
+    broadcasts_count = AdminBroadcast.query.count()
+    return render_template('admin/dashboard.html', title=_('Admin Dashboard'), user_count=user_count, bot_count=bot_count, broadcasts_count=broadcasts_count)
+
+@admin_bp.route('/users')
+@admin_required
+def users():
+    all_users = User.query.order_by(User.created_at.desc()).all()
+    return render_template('admin/users.html', title=_('Manage Users'), users=all_users)
+
+@admin_bp.route('/broadcasts', methods=['GET', 'POST'])
+@admin_required
+def broadcasts():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        broadcast = AdminBroadcast(title=title, content=content)
+        db.session.add(broadcast)
+        db.session.commit()
+        flash(_('New broadcast has been created.'), 'success')
+        return redirect(url_for('admin.broadcasts'))
+        
+    all_broadcasts = AdminBroadcast.query.order_by(AdminBroadcast.created_at.desc()).all()
+    return render_template('admin/broadcasts.html', title=_('Broadcasts'), broadcasts=all_broadcasts)
+4-VAZIFA: Admin Uchun Maxsus Kirish Sahifasi Shablonini Yaratish
+
+chatbot_factory/templates/admin/ papkasi ichida login.html nomli yangi fayl yarating va unga quyidagi kodni joylashtiring:
+
+HTML
+
+{% extends "base.html" %}
+{% block content %}
+<div class="col-md-6 offset-md-3">
+    <h2 class="text-center">{{ _('Admin Panel Login') }}</h2>
+    <form method="POST" action="{{ url_for('admin.login') }}">
+        <div class="form-group mb-3">
+            <label for="username" class="form-label">{{ _('Username') }}</label>
+            <input type="text" name="username" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="password" class="form-label">{{ _('Password') }}</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">{{ _('Log In') }}</button>
+    </form>
+</div>
+{% endblock %}
+5-VAZIFA: Yakuniy Hisobotni Yaratish
+
+HISOBOT_ADMIN_SECRET_LOGIN.md nomli fayl yarating va unga quyidagi ma'lumotlarni joylashtiring:
+
+Markdown
+
+# "ChatBot Factory" Loyihasi Bo'yicha Hisobot (Maxfiy Admin Kirish Tizimi)
+
+## 1. Xulosa
+Admin Paneli uchun foydalanuvchilar bazasidan mustaqil, maxfiy login va parolga asoslangan kirish tizimi muvaffaqiyatli amalga oshirildi. Kirish ma'lumotlari xavfsizlik uchun Replit Secrets orqali boshqariladi.
+
+## 2. Bajarilgan Ishlar
+- [ ] `@admin_required` dekoratori `session`'ga asoslangan tekshiruv uchun to'liq qayta yozildi.
+- [ ] Admin uchun `/admin/login` va `/admin/logout` marshrutlari yaratildi.
+- [ ] Kirish mantig'i `ADMIN_USERNAME` va `ADMIN_PASSWORD` muhit o'zgaruvchilariga bog'landi.
+- [ ] Admin uchun maxsus `login.html` shabloni yaratildi.
+
+## 3. Yangi Tizimni Ishlatish va Tekshirish Yo'riqnomasi
+1.  **Secrets Sozlash (Eng Muhim Qadam):** Replit'ning "Secrets" bo'limiga o'ting va quyidagi ikkita yangi o'zgaruvchini yarating:
+    * **Key:** `ADMIN_USERNAME`, **Value:** `admin` (yoki o'zingiz xohlagan boshqa nom)
+    * **Key:** `ADMIN_PASSWORD`, **Value:** `bu_yerga_juda_kuchli_parol_yozing`
+2.  **Xavfsizlikni Tekshirish:** Tizimga kirmagan holda yoki oddiy foydalanuvchi sifatida `/admin/dashboard` manziliga kirishga harakat qiling. Siz avtomatik `/admin/login` sahifasiga yo'naltirilishingiz kerak.
+3.  **Kirishni Tekshirish:** `/admin/login` sahifasida "Secrets"da kiritgan login va parolingizni kiriting. Muvaffaqiyatli kirgach, sizni Admin Paneliga o'tkazishi kerak.
+4.  **Chiqishni Tekshirish:** Admin Panelidan "Logout" tugmasi orqali chiqing (bu tugman

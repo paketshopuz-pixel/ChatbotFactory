@@ -1,13 +1,14 @@
 # chatbot_factory/utils/decorators.py
 from functools import wraps
-from flask import abort
-from flask_login import current_user
+from flask import session, redirect, url_for, flash, request
+from flask_babel import gettext as _
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            abort(403)  # Forbidden
+        if not session.get('admin_logged_in'):
+            flash(_('You need to be logged in as an admin to access this page.'), 'warning')
+            return redirect(url_for('admin.login'))
         return f(*args, **kwargs)
     return decorated_function
 

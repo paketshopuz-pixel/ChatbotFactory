@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="col-md-6 offset-md-3">
+    <h2 class="text-center">{{ _('Admin Panel Login') }}</h2>
+    <form method="POST" action="{{ url_for('admin.login') }}">
+        <div class="form-group mb-3">
+            <label for="username" class="form-label">{{ _('Username') }}</label>
+            <input type="text" name="username" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="password" class="form-label">{{ _('Password') }}</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">{{ _('Log In') }}</button>
+    </form>
+</div>
+{% endblock %}
