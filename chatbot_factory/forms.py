@@ -1,9 +1,9 @@
 # chatbot_factory/forms.py
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_babel import gettext as _
-from .models import User
+from .models import User, PlatformType
 
 class RegistrationForm(FlaskForm):
     username = StringField(_('Username'), validators=[DataRequired(), Length(min=4, max=25)])
@@ -27,3 +27,11 @@ class LoginForm(FlaskForm):
     password = PasswordField(_('Password'), validators=[DataRequired()])
     remember = BooleanField(_('Remember Me'))
     submit = SubmitField(_('Login'))
+
+class BotForm(FlaskForm):
+    name = StringField(_('Bot Name'), validators=[DataRequired(), Length(min=3, max=100)])
+    platform_type = SelectField(_('Platform'), 
+                                choices=[(p.name, p.value.capitalize()) for p in PlatformType],
+                                validators=[DataRequired()])
+    telegram_token = StringField(_('Telegram Bot Token'))
+    submit = SubmitField(_('Save Bot'))

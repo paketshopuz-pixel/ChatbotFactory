@@ -1,5 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1 class="mb-4">{{ _('Welcome to your Dashboard,') }} {{ current_user.username }}!</h1>
-    <p>{{ _('This is your personal space. Bot management features will appear here soon.') }}</p>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">{{ _('My Bots') }}</h1>
+        <a class="btn btn-primary" href="{{ url_for('bots.create_bot') }}">{{ _('Create New Bot') }}</a>
+    </div>
+
+    {% if bots %}
+        <ul class="list-group">
+            {% for bot in bots %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">{{ bot.name }}</h5>
+                        <small class="text-muted">{{ _('Platform:') }} {{ bot.platform_type.value.capitalize() }}</small>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('bots.edit_bot', bot_id=bot.id) }}" class="btn btn-secondary btn-sm">{{ _('Edit') }}</a>
+                        <form action="{{ url_for('bots.delete_bot', bot_id=bot.id) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ _('Are you sure you want to delete this bot?') }}');">
+                            <button type="submit" class="btn btn-danger btn-sm">{{ _('Delete') }}</button>
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="alert alert-info">
+            {{ _('You have not created any bots yet. Click the "Create New Bot" button to get started!') }}
+        </div>
+    {% endif %}
 {% endblock %}

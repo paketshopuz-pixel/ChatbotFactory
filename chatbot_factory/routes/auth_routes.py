@@ -3,7 +3,7 @@ from flask import render_template, url_for, flash, redirect, request, Blueprint
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_babel import gettext as _
 from chatbot_factory import db
-from chatbot_factory.models import User
+from chatbot_factory.models import User, Bot
 from chatbot_factory.forms import LoginForm, RegistrationForm
 
 auth_bp = Blueprint('auth', __name__)
@@ -45,4 +45,5 @@ def logout():
 @auth_bp.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template('dashboard.html', title=_('Dashboard'))
+    bots = Bot.query.filter_by(owner=current_user).order_by(Bot.created_at.desc()).all()
+    return render_template('dashboard.html', title=_('Dashboard'), bots=bots)
